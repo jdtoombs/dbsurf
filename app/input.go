@@ -5,7 +5,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func (a App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a *App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "esc":
 		a.mode = modeList
@@ -31,7 +31,6 @@ func (a App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 
-	// Update the focused input
 	var cmd tea.Cmd
 	if a.inputStep == 0 {
 		a.connInput, cmd = a.connInput.Update(msg)
@@ -41,7 +40,7 @@ func (a App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, cmd
 }
 
-func (a App) viewInput() string {
+func (a *App) viewInput() string {
 	var content string
 
 	if a.inputStep == 0 {

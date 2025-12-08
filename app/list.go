@@ -6,10 +6,9 @@ import (
 
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 )
 
-func (a App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return a, tea.Quit
@@ -41,7 +40,7 @@ func (a App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return a, nil
 }
 
-func (a App) viewList() string {
+func (a *App) viewList() string {
 	var content string
 
 	if len(a.config.Connections) == 0 {
@@ -63,25 +62,4 @@ func (a App) viewList() string {
 	controls := "j/k: navigate • n: new • d: delete • q: quit"
 
 	return a.renderFrame(content, controls)
-}
-
-// renderFrame wraps content in the standard layout (logo + box + controls)
-func (a App) renderFrame(content, controls string) string {
-	logoRendered := titleStyle.Render(Logo)
-	boxedContent := boxStyle.Render(content)
-
-	logoRendered = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logoRendered)
-	boxedContent = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, boxedContent)
-	controlsRendered := lipgloss.PlaceHorizontal(a.width, lipgloss.Center, dimStyle.Render(controls))
-
-	contentHeight := strings.Count(logoRendered, "\n") + strings.Count(boxedContent, "\n") + 3
-	bottomPadding := a.height - contentHeight - 2
-	if bottomPadding < 0 {
-		bottomPadding = 0
-	}
-
-	return logoRendered + "\n" +
-		boxedContent + "\n" +
-		strings.Repeat("\n", bottomPadding) +
-		controlsRendered
 }
