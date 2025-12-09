@@ -18,11 +18,16 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.height = msg.Height
 		return a, nil
 	case tea.KeyMsg:
+		if msg.String() == "q" {
+			return a, tea.Quit
+		}
 		switch a.mode {
 		case modeList:
 			return a.updateList(msg)
 		case modeInput:
 			return a.updateInput(msg)
+		case modeConnected:
+			return a.updateConnected(msg)
 		}
 	}
 	return a, nil
@@ -38,6 +43,8 @@ func (a *App) View() string {
 		return a.viewList()
 	case modeInput:
 		return a.viewInput()
+	case modeConnected:
+		return a.viewConnected()
 	default:
 		return a.viewList()
 	}

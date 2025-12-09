@@ -1,6 +1,7 @@
 package app
 
 import (
+	"dbsurf/db"
 	"fmt"
 	"strings"
 
@@ -10,8 +11,6 @@ import (
 
 func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
-		return a, tea.Quit
 	case "j", "down":
 		if a.cursor < len(a.config.Connections)-1 {
 			a.cursor++
@@ -35,6 +34,20 @@ func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if a.cursor >= len(a.config.Connections) && a.cursor > 0 {
 				a.cursor--
 			}
+		}
+		case "enter":
+		if len(a.config.Connections) > 0 {
+			conn := a.config.Connections[a.cursor]
+			a.dbType = conn.DBType
+			a.db, a.dbErr = db.Connect(conn.ConnString)
+			if a.dbErr == nil {
+				a.databases, _ = db.ListDatabases(a.db, a.dbType)
+			}
+			a.filteredDatabases = a.databases
+			a.dbCursor = 0
+			a.dbSearching = false
+			a.dbSearchInput.Reset()
+			a.mode = modeConnected
 		}
 	}
 	return a, nil

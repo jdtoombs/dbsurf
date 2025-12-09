@@ -1,6 +1,7 @@
 package app
 
 import (
+	"database/sql"
 	"dbsurf/config"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -39,6 +40,7 @@ type mode int
 const (
 	modeList mode = iota
 	modeInput
+	modeConnected
 )
 
 type App struct {
@@ -51,6 +53,14 @@ type App struct {
 	err       error
 	width     int
 	height    int
+	db                *sql.DB
+	dbErr             error
+	dbType            string
+	databases         []string
+	filteredDatabases []string
+	dbCursor          int
+	dbSearching       bool
+	dbSearchInput     textinput.Model
 }
 
 func New() *App {
@@ -64,10 +74,15 @@ func New() *App {
 	ni.Placeholder = "My Database"
 	ni.Width = 30
 
+	si := textinput.New()
+	si.Placeholder = "Search..."
+	si.Width = 30
+
 	return &App{
-		config:    cfg,
-		mode:      modeList,
-		connInput: ci,
-		nameInput: ni,
+		config:        cfg,
+		mode:          modeList,
+		connInput:     ci,
+		nameInput:     ni,
+		dbSearchInput: si,
 	}
 }

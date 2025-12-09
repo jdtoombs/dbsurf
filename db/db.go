@@ -4,12 +4,17 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+
 	_ "github.com/go-sql-driver/mysql"
+	_ "github.com/microsoft/go-mssqldb"
 )
 
 func DetectDBType(connString string) string {
 	if strings.HasPrefix(connString, "postgres") {
 		return "postgres"
+	}
+	if strings.HasPrefix(connString, "sqlserver") {
+		return "sqlserver"
 	}
 	return "mysql"
 }
@@ -36,6 +41,8 @@ func ListDatabases(db *sql.DB, dbType string) ([]string, error) {
 		query = "SHOW DATABASES"
 	case "postgres":
 		query = "SELECT datname FROM pg_database WHERE datistemplate = false"
+	case "sqlserver":
+		query = "SELECT name FROM sys.databases"
 	}
 
 	rows, err := db.Query(query)

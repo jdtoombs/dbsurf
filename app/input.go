@@ -1,6 +1,8 @@
 package app
 
 import (
+	"dbsurf/db"
+
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -22,7 +24,7 @@ func (a *App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.config.AddConnection(
 			a.nameInput.Value(),
 			a.connInput.Value(),
-			"postgres",
+			db.DetectDBType(a.connInput.Value()),
 		)
 		a.config.Save()
 		a.mode = modeList
