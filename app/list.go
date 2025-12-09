@@ -12,13 +12,9 @@ import (
 func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "j", "down":
-		if a.cursor < len(a.config.Connections)-1 {
-			a.cursor++
-		}
+		a.cursor = moveCursor(a.cursor, 1, len(a.config.Connections))
 	case "k", "up":
-		if a.cursor > 0 {
-			a.cursor--
-		}
+		a.cursor = moveCursor(a.cursor, -1, len(a.config.Connections))
 	case "n":
 		a.mode = modeInput
 		a.inputStep = 0

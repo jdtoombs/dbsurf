@@ -101,6 +101,9 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	if a.queryFocused {
 		switch msg.String() {
+		case "ctrl+c":
+			a.queryInput.SetValue("")
+			return a, nil
 		case "enter":
 			query := a.queryInput.Value()
 			if query != "" {
@@ -131,37 +134,44 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Navigate results
 		switch msg.String() {
 		case "j", "down":
-			if a.resultCursor < len(a.filteredResultRows)-1 {
-				a.resultCursor++
-			}
+			a.resultCursor = moveCursor(a.resultCursor, 1, len(a.filteredResultRows))
 		case "k", "up":
-			if a.resultCursor > 0 {
-				a.resultCursor--
-			}
+			a.resultCursor = moveCursor(a.resultCursor, -1, len(a.filteredResultRows))
 		}
 		return a, nil
 	}
 }
 
 func (a *App) viewQuery() string {
-	var content string
+	// Use strings.Builder instead of += concatenation to reduce allocations.
+	// Each += creates a new string; Builder reuses a single buffer.
+	var b strings.Builder
 
-	content = "Database: " + selectedStyle.Render(a.selectedDatabase) + "\n\n"
+	b.WriteString("Database: ")
+	b.WriteString(selectedStyle.Render(a.selectedDatabase))
+	b.WriteString("\n\n")
 
 	if a.queryFocused {
-		content += "Query: " + a.queryInput.View() + "\n\n"
+		b.WriteString("Query: ")
+		b.WriteString(a.queryInput.View())
+		b.WriteString("\n\n")
 	} else {
-		content += dimStyle.Render("Query: "+a.queryInput.Value()) + "\n\n"
+		b.WriteString(dimStyle.Render("Query: " + a.queryInput.Value()))
+		b.WriteString("\n\n")
 	}
 
 	if a.resultSearching {
-		content += "Filter: " + a.resultSearchInput.View() + "\n\n"
+		b.WriteString("Filter: ")
+		b.WriteString(a.resultSearchInput.View())
+		b.WriteString("\n\n")
 	} else if a.resultFilter != "" {
-		content += dimStyle.Render("Filter: "+a.resultFilter+" (esc to clear)") + "\n\n"
+		b.WriteString(dimStyle.Render("Filter: " + a.resultFilter + " (esc to clear)"))
+		b.WriteString("\n\n")
 	}
 
 	if a.queryErr != nil {
-		content += "Error: " + a.queryErr.Error()
+		b.WriteString("Error: ")
+		b.WriteString(a.queryErr.Error())
 	} else if a.queryResult != nil && len(a.filteredResultRows) > 0 {
 		// Show current row in JSON-like format with highlighted keys
 		row := a.filteredResultRows[a.resultCursor]
@@ -170,7 +180,8 @@ func (a *App) viewQuery() string {
 		if !a.queryFocused {
 			bracketStyle = bracketFocusedStyle
 		}
-		content += bracketStyle.Render("{") + "\n"
+		b.WriteString(bracketStyle.Render("{"))
+		b.WriteString("\n")
 		for j, col := range a.queryResult.Columns {
 			val := ""
 			if j < len(row) {
@@ -180,21 +191,28 @@ func (a *App) viewQuery() string {
 			if j == len(a.queryResult.Columns)-1 {
 				comma = ""
 			}
-			content += "  " + selectedStyle.Render(fmt.Sprintf(`"%s"`, col)) + ": " + valueStyle.Render(fmt.Sprintf(`"%s"`, val)) + comma + "\n"
+			b.WriteString("  ")
+			b.WriteString(selectedStyle.Render(fmt.Sprintf(`"%s"`, col)))
+			b.WriteString(": ")
+			b.WriteString(valueStyle.Render(fmt.Sprintf(`"%s"`, val)))
+			b.WriteString(comma)
+			b.WriteString("\n")
 		}
-		content += bracketStyle.Render("}") + "\n"
+		b.WriteString(bracketStyle.Render("}"))
+		b.WriteString("\n")
 
-		content += "\n" + dimStyle.Render(fmt.Sprintf("Row %d/%d", a.resultCursor+1, len(a.filteredResultRows)))
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render(fmt.Sprintf("Row %d/%d", a.resultCursor+1, len(a.filteredResultRows))))
 		if a.resultFilter != "" {
-			content += dimStyle.Render(fmt.Sprintf(" (filtered from %d)", len(a.queryResult.Rows)))
+			b.WriteString(dimStyle.Render(fmt.Sprintf(" (filtered from %d)", len(a.queryResult.Rows))))
 		}
 	} else if a.queryResult != nil {
-		content += dimStyle.Render("No results")
+		b.WriteString(dimStyle.Render("No results"))
 	} else {
-		content += dimStyle.Render("Enter a query and press enter")
+		b.WriteString(dimStyle.Render("Enter a query and press enter"))
 	}
 
-	controls := "enter: execute • tab: focus • /: filter • ctrl+t: tables • j/k: nav • esc: back"
+	controls := "enter: execute • tab: focus • /: filter • ctrl+c: clear • ctrl+t: tables • j/k: nav • esc: back"
 
-	return a.renderFrame(content, controls)
+	return a.renderFrame(b.String(), controls)
 }

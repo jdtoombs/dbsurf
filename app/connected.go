@@ -9,17 +9,7 @@ import (
 )
 
 func (a *App) filterDatabases() {
-	query := strings.ToLower(a.dbSearchInput.Value())
-	if query == "" {
-		a.filteredDatabases = a.databases
-		return
-	}
-	a.filteredDatabases = nil
-	for _, db := range a.databases {
-		if strings.Contains(strings.ToLower(db), query) {
-			a.filteredDatabases = append(a.filteredDatabases, db)
-		}
-	}
+	a.filteredDatabases = filterStrings(a.databases, a.dbSearchInput.Value())
 }
 
 func (a *App) updateConnected(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -57,13 +47,9 @@ func (a *App) updateConnected(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.dbSearchInput.Focus()
 		return a, textinput.Blink
 	case "j", "down":
-		if a.dbCursor < len(a.filteredDatabases)-1 {
-			a.dbCursor++
-		}
+		a.dbCursor = moveCursor(a.dbCursor, 1, len(a.filteredDatabases))
 	case "k", "up":
-		if a.dbCursor > 0 {
-			a.dbCursor--
-		}
+		a.dbCursor = moveCursor(a.dbCursor, -1, len(a.filteredDatabases))
 	case "enter":
 		if len(a.filteredDatabases) > 0 {
 			a.selectedDatabase = a.filteredDatabases[a.dbCursor]

@@ -10,17 +10,7 @@ import (
 )
 
 func (a *App) filterTables() {
-	query := strings.ToLower(a.tableSearchInput.Value())
-	if query == "" {
-		a.filteredTables = a.tables
-		return
-	}
-	a.filteredTables = nil
-	for _, t := range a.tables {
-		if strings.Contains(strings.ToLower(t), query) {
-			a.filteredTables = append(a.filteredTables, t)
-		}
-	}
+	a.filteredTables = filterStrings(a.tables, a.tableSearchInput.Value())
 }
 
 func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -54,13 +44,9 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.tableSearchInput.Focus()
 		return a, textinput.Blink
 	case "j", "down":
-		if a.tableCursor < len(a.filteredTables)-1 {
-			a.tableCursor++
-		}
+		a.tableCursor = moveCursor(a.tableCursor, 1, len(a.filteredTables))
 	case "k", "up":
-		if a.tableCursor > 0 {
-			a.tableCursor--
-		}
+		a.tableCursor = moveCursor(a.tableCursor, -1, len(a.filteredTables))
 	case "enter":
 		if len(a.filteredTables) > 0 {
 			tableName := a.filteredTables[a.tableCursor]

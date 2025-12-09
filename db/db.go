@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"strings"
+	"time"
 
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/microsoft/go-mssqldb"
@@ -26,6 +27,11 @@ func Connect(connString string) (*sql.DB, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Configure pool for single-user TUI
+	db.SetMaxOpenConns(2)
+	db.SetMaxIdleConns(1)
+	db.SetConnMaxLifetime(5 * time.Minute)
 
 	if err := db.Ping(); err != nil {
 		return nil, fmt.Errorf("connection failed: %w", err)
