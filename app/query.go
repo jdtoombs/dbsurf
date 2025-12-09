@@ -165,7 +165,12 @@ func (a *App) viewQuery() string {
 	} else if a.queryResult != nil && len(a.filteredResultRows) > 0 {
 		// Show current row in JSON-like format with highlighted keys
 		row := a.filteredResultRows[a.resultCursor]
-		content += selectedStyle.Render("{") + "\n"
+		// Brackets: yellow when results focused, grey when input focused
+		bracketStyle := dimStyle
+		if !a.queryFocused {
+			bracketStyle = bracketFocusedStyle
+		}
+		content += bracketStyle.Render("{") + "\n"
 		for j, col := range a.queryResult.Columns {
 			val := ""
 			if j < len(row) {
@@ -177,7 +182,7 @@ func (a *App) viewQuery() string {
 			}
 			content += "  " + selectedStyle.Render(fmt.Sprintf(`"%s"`, col)) + ": " + valueStyle.Render(fmt.Sprintf(`"%s"`, val)) + comma + "\n"
 		}
-		content += selectedStyle.Render("}") + "\n"
+		content += bracketStyle.Render("}") + "\n"
 
 		content += "\n" + dimStyle.Render(fmt.Sprintf("Row %d/%d", a.resultCursor+1, len(a.filteredResultRows)))
 		if a.resultFilter != "" {

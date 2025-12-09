@@ -36,6 +36,10 @@ var (
 
 	dimStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
+
+	bracketFocusedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("3")).
+				Bold(true)
 )
 
 type mode int

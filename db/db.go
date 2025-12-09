@@ -74,13 +74,15 @@ func UseDatabase(db *sql.DB, name, dbType string) error {
 
 func ListTables(db *sql.DB, dbName, dbType string) ([]string, error) {
 	var query string
+	var includeSchema bool
 	switch dbType {
 	case "mysql":
 		query = "SHOW TABLES"
 	case "postgres":
 		query = "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
 	case "sqlserver":
-		query = fmt.Sprintf("SELECT TABLE_NAME FROM [%s].INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'", dbName)
+		query = fmt.Sprintf("SELECT TABLE_SCHEMA, TABLE_NAME FROM [%s].INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'", dbName)
+		includeSchema = true
 	}
 
 	rows, err := db.Query(query)
@@ -91,9 +93,15 @@ func ListTables(db *sql.DB, dbName, dbType string) ([]string, error) {
 
 	var tables []string
 	for rows.Next() {
-		var name string
-		rows.Scan(&name)
-		tables = append(tables, name)
+		if includeSchema {
+			var schema, name string
+			rows.Scan(&schema, &name)
+			tables = append(tables, fmt.Sprintf("[%s].[%s]", schema, name))
+		} else {
+			var name string
+			rows.Scan(&name)
+			tables = append(tables, name)
+		}
 	}
 	return tables, nil
 }
