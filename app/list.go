@@ -41,6 +41,17 @@ func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.dbType = conn.DBType
 			a.db, a.dbErr = db.Connect(conn.ConnString)
 			if a.dbErr == nil {
+				// PostgreSQL: skip db selection, go straight to query mode
+				if a.dbType == "postgres" {
+					a.selectedDatabase = ""
+					a.queryInput.Reset()
+					a.queryInput.Focus()
+					a.queryFocused = true
+					a.queryResult = nil
+					a.queryErr = nil
+					a.mode = modeQuery
+					return a, textinput.Blink
+				}
 				a.databases, _ = db.ListDatabases(a.db, a.dbType)
 			}
 			a.filteredDatabases = a.databases

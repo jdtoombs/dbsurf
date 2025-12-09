@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -73,6 +74,7 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.queryFocused = !a.queryFocused
 			if a.queryFocused {
 				a.queryInput.Focus()
+				return a, textinput.Blink
 			} else {
 				a.queryInput.Blur()
 			}
@@ -82,7 +84,7 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !a.queryFocused && a.queryResult != nil {
 			a.resultSearching = true
 			a.resultSearchInput.Focus()
-			return a, nil
+			return a, textinput.Blink
 		}
 	case "ctrl+t":
 		tables, err := db.ListTables(a.db, a.selectedDatabase, a.dbType)
@@ -202,9 +204,12 @@ func (a *App) viewQuery() string {
 		b.WriteString("\n")
 
 		b.WriteString("\n")
-		b.WriteString(dimStyle.Render(fmt.Sprintf("Row %d/%d", a.resultCursor+1, len(a.filteredResultRows))))
+		b.WriteString(dimStyle.Render("Row "))
+		b.WriteString(selectedStyle.Render(fmt.Sprintf("%d/%d", a.resultCursor+1, len(a.filteredResultRows))))
 		if a.resultFilter != "" {
-			b.WriteString(dimStyle.Render(fmt.Sprintf(" (filtered from %d)", len(a.queryResult.Rows))))
+			b.WriteString(dimStyle.Render(" (filtered from "))
+			b.WriteString(selectedStyle.Render(fmt.Sprintf("%d", len(a.queryResult.Rows))))
+			b.WriteString(dimStyle.Render(")"))
 		}
 	} else if a.queryResult != nil {
 		b.WriteString(dimStyle.Render("No results"))
