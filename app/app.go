@@ -19,6 +19,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return a, nil
 	case tea.KeyMsg:
 		if msg.String() == "q" {
+			if a.db != nil {
+				a.db.Close()
+			}
 			return a, tea.Quit
 		}
 		switch a.mode {
