@@ -3,7 +3,9 @@ package app
 import (
 	"database/sql"
 	"dbsurf/config"
+	"dbsurf/db"
 
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -41,6 +43,7 @@ const (
 	modeList mode = iota
 	modeInput
 	modeConnected
+	modeQuery
 )
 
 type App struct {
@@ -61,6 +64,13 @@ type App struct {
 	dbCursor          int
 	dbSearching       bool
 	dbSearchInput     textinput.Model
+	// Query mode
+	selectedDatabase string
+	queryInput       textinput.Model
+	queryResult      *db.QueryResult
+	queryErr         error
+	resultTable      table.Model
+	queryFocused     bool
 }
 
 func New() *App {
@@ -78,11 +88,17 @@ func New() *App {
 	si.Placeholder = "Search..."
 	si.Width = 30
 
+	qi := textinput.New()
+	qi.Placeholder = "SELECT * FROM ..."
+	qi.Width = 60
+
 	return &App{
 		config:        cfg,
 		mode:          modeList,
 		connInput:     ci,
 		nameInput:     ni,
 		dbSearchInput: si,
+		queryInput:    qi,
+		queryFocused:  true,
 	}
 }

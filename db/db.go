@@ -60,8 +60,15 @@ func ListDatabases(db *sql.DB, dbType string) ([]string, error) {
 	return databases, nil
 }
 
-func UseDatabase(db *sql.DB, name string) error {
-	_, err := db.Exec("USE " + name)
+func UseDatabase(db *sql.DB, name, dbType string) error {
+	var query string
+	switch dbType {
+	case "sqlserver":
+		query = fmt.Sprintf("USE [%s]", name)
+	default:
+		query = "USE " + name
+	}
+	_, err := db.Exec(query)
 	return err
 }
 

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"dbsurf/db"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textinput"
@@ -59,6 +60,23 @@ func (a *App) updateConnected(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if a.dbCursor > 0 {
 			a.dbCursor--
 		}
+	case "enter":
+		if len(a.filteredDatabases) > 0 {
+			a.selectedDatabase = a.filteredDatabases[a.dbCursor]
+			// Skip UseDatabase for SQL Server - handled via query prepend
+			if a.dbType != "sqlserver" {
+				if err := db.UseDatabase(a.db, a.selectedDatabase, a.dbType); err != nil {
+					a.queryErr = err
+				}
+			}
+			a.queryInput.Reset()
+			a.queryInput.Focus()
+			a.queryFocused = true
+			a.queryResult = nil
+			a.queryErr = nil
+			a.mode = modeQuery
+			return a, textinput.Blink
+		}
 	}
 	return a, nil
 }
@@ -107,7 +125,7 @@ func (a *App) viewConnected() string {
 		}
 	}
 
-	controls := "j/k: navigate • /: search • esc: back • q: quit"
+	controls := "j/k: navigate • /: search • enter: select • esc: back • q: quit"
 
 	return a.renderFrame(content, controls)
 }

@@ -28,6 +28,8 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return a.updateInput(msg)
 		case modeConnected:
 			return a.updateConnected(msg)
+		case modeQuery:
+			return a.updateQuery(msg)
 		}
 	}
 	return a, nil
@@ -45,6 +47,8 @@ func (a *App) View() string {
 		return a.viewInput()
 	case modeConnected:
 		return a.viewConnected()
+	case modeQuery:
+		return a.viewQuery()
 	default:
 		return a.viewList()
 	}
