@@ -52,7 +52,17 @@ func (a *App) View() string {
 
 func (a *App) renderFrame(content, controls string) string {
 	logoRendered := titleStyle.Render(Logo)
-	boxedContent := boxStyle.Render(content)
+
+	boxWidth := a.width - 4
+	if boxWidth > 80 {
+		boxWidth = 80
+	}
+	if boxWidth < 40 {
+		boxWidth = 40
+	}
+
+	box := boxStyle.Width(boxWidth - 4) 
+	boxedContent := box.Render(content)
 
 	logoRendered = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logoRendered)
 	boxedContent = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, boxedContent)
