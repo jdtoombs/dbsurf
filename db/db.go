@@ -72,6 +72,32 @@ func UseDatabase(db *sql.DB, name, dbType string) error {
 	return err
 }
 
+func ListTables(db *sql.DB, dbName, dbType string) ([]string, error) {
+	var query string
+	switch dbType {
+	case "mysql":
+		query = "SHOW TABLES"
+	case "postgres":
+		query = "SELECT tablename FROM pg_tables WHERE schemaname = 'public'"
+	case "sqlserver":
+		query = fmt.Sprintf("SELECT TABLE_NAME FROM [%s].INFORMATION_SCHEMA.TABLES WHERE TABLE_TYPE = 'BASE TABLE'", dbName)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var tables []string
+	for rows.Next() {
+		var name string
+		rows.Scan(&name)
+		tables = append(tables, name)
+	}
+	return tables, nil
+}
+
 type QueryResult struct {
 	Columns []string
 	Rows    [][]string

@@ -46,6 +46,10 @@ func (a *App) updateConnected(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	switch msg.String() {
 	case "esc":
+		if a.db != nil {
+			a.db.Close()
+			a.db = nil
+		}
 		a.mode = modeList
 		return a, nil
 	case "/":
@@ -92,6 +96,8 @@ func (a *App) viewConnected() string {
 
 		if a.dbSearching {
 			content += "Search: " + a.dbSearchInput.View() + "\n\n"
+		} else if a.dbSearchInput.Value() != "" {
+			content += dimStyle.Render("Search: "+a.dbSearchInput.Value()) + "\n\n"
 		}
 
 		content += "Databases:\n"

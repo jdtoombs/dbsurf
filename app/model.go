@@ -5,17 +5,18 @@ import (
 	"dbsurf/config"
 	"dbsurf/db"
 
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
 
 const Logo = `
-     _ _                  __
-  __| | |__  ___ _   _ _ _/ _|
- / ` + "`" + `| '_ \/ __| | | | '__| |_
-| (_| | |_) \__ \ |_| | |  |  _|
- \__,_|_.__/|___/\__,_|_|  |_|
+       ▄▄  ▄▄                                         ▄▄▄▄
+       ██  ██                                        ██▀▀▀
+  ▄███▄██  ██▄███▄   ▄▄█████▄  ██    ██   ██▄████  ███████
+ ██▀  ▀██  ██▀  ▀██  ██▄▄▄▄ ▀  ██    ██   ██▀        ██
+ ██    ██  ██    ██   ▀▀▀▀██▄  ██    ██   ██         ██
+ ▀██▄▄███  ███▄▄██▀  █▄▄▄▄▄██  ██▄▄▄███   ██         ██
+   ▀▀▀ ▀▀  ▀▀ ▀▀▀     ▀▀▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀         ▀▀
 `
 
 // Styles
@@ -44,6 +45,7 @@ const (
 	modeInput
 	modeConnected
 	modeQuery
+	modeTableList
 )
 
 type App struct {
@@ -65,12 +67,22 @@ type App struct {
 	dbSearching       bool
 	dbSearchInput     textinput.Model
 	// Query mode
-	selectedDatabase string
-	queryInput       textinput.Model
-	queryResult      *db.QueryResult
-	queryErr         error
-	resultTable      table.Model
-	queryFocused     bool
+	selectedDatabase    string
+	queryInput          textinput.Model
+	queryResult         *db.QueryResult
+	queryErr            error
+	queryFocused        bool
+	resultCursor        int
+	resultSearching     bool
+	resultSearchInput   textinput.Model
+	resultFilter        string
+	filteredResultRows  [][]string
+	// Table list mode
+	tables           []string
+	filteredTables   []string
+	tableCursor      int
+	tableSearching   bool
+	tableSearchInput textinput.Model
 }
 
 func New() *App {
@@ -92,13 +104,23 @@ func New() *App {
 	qi.Placeholder = "SELECT * FROM ..."
 	qi.Width = 60
 
+	ri := textinput.New()
+	ri.Placeholder = "Filter results..."
+	ri.Width = 30
+
+	ti := textinput.New()
+	ti.Placeholder = "Filter tables..."
+	ti.Width = 30
+
 	return &App{
-		config:        cfg,
-		mode:          modeList,
-		connInput:     ci,
-		nameInput:     ni,
-		dbSearchInput: si,
-		queryInput:    qi,
-		queryFocused:  true,
+		config:            cfg,
+		mode:              modeList,
+		connInput:         ci,
+		nameInput:         ni,
+		dbSearchInput:     si,
+		queryInput:        qi,
+		queryFocused:      true,
+		resultSearchInput: ri,
+		tableSearchInput:  ti,
 	}
 }

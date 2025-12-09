@@ -37,6 +37,10 @@ func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		case "enter":
 		if len(a.config.Connections) > 0 {
+			if a.db != nil {
+				a.db.Close()
+				a.db = nil
+			}
 			conn := a.config.Connections[a.cursor]
 			a.dbType = conn.DBType
 			a.db, a.dbErr = db.Connect(conn.ConnString)
