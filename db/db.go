@@ -118,6 +118,46 @@ type QueryResult struct {
 	Rows    [][]string
 }
 
+func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, error) {
+	var query string
+	switch dbType {
+	case "mysql":
+		query = fmt.Sprintf(`
+			SELECT COLUMN_NAME
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+			WHERE TABLE_SCHEMA = '%s' AND TABLE_NAME = '%s' AND CONSTRAINT_NAME = 'PRIMARY'
+			ORDER BY ORDINAL_POSITION`, dbName, tableName)
+	case "postgres":
+		query = fmt.Sprintf(`
+			SELECT a.attname
+			FROM pg_index i
+			JOIN pg_attribute a ON a.attrelid = i.indrelid AND a.attnum = ANY(i.indkey)
+			WHERE i.indrelid = '%s'::regclass AND i.indisprimary
+			ORDER BY array_position(i.indkey, a.attnum)`, tableName)
+	case "sqlserver":
+		query = fmt.Sprintf(`
+			SELECT COLUMN_NAME
+			FROM [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+			WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1
+			AND TABLE_NAME = '%s'
+			ORDER BY ORDINAL_POSITION`, dbName, tableName)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []string
+	for rows.Next() {
+		var col string
+		rows.Scan(&col)
+		columns = append(columns, col)
+	}
+	return columns, nil
+}
+
 func RunQuery(db *sql.DB, query string) (*QueryResult, error) {
 	rows, err := db.Query(query)
 	if err != nil {

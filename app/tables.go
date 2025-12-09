@@ -67,6 +67,17 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.resultSearchInput.SetValue("")
 				a.filterResults()
 				a.resultCursor = 0
+				a.fieldCursor = 0
+				// Cache table name and primary key for edits
+				// Strip schema prefix if present (e.g., [dbo].[users] -> users)
+				cleanName := tableName
+				if idx := strings.LastIndex(tableName, "."); idx != -1 {
+					cleanName = strings.Trim(tableName[idx+1:], "[]\"`")
+				} else {
+					cleanName = strings.Trim(tableName, "[]\"`")
+				}
+				a.queryTableName = cleanName
+				a.queryPKColumns, _ = db.GetPrimaryKey(a.db, a.selectedDatabase, cleanName, a.dbType)
 			}
 			a.mode = modeQuery
 			return a, nil

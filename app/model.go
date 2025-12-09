@@ -17,7 +17,7 @@ const Logo = `
  ██    ██  ██    ██   ▀▀▀▀██▄  ██    ██   ██         ██
  ▀██▄▄███  ███▄▄██▀  █▄▄▄▄▄██  ██▄▄▄███   ██         ██
    ▀▀▀ ▀▀  ▀▀ ▀▀▀     ▀▀▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀         ▀▀
-                            v0.0.1
+                            v0.0.2
 `
 
 // Styles
@@ -82,6 +82,15 @@ type App struct {
 	resultSearchInput   textinput.Model
 	resultFilter        string
 	filteredResultRows  [][]string
+	// Field editing
+	fieldCursor         int
+	fieldEditing        bool
+	fieldEditInput      textinput.Model
+	fieldOriginalValue  string
+	editConfirming      bool
+	pendingUpdateSQL    string
+	queryTableName      string
+	queryPKColumns      []string
 	// Table list mode
 	tables           []string
 	filteredTables   []string
@@ -117,6 +126,10 @@ func New() *App {
 	ti.Placeholder = "Filter tables..."
 	ti.Width = 30
 
+	fi := textinput.New()
+	fi.Placeholder = ""
+	fi.Width = 50
+
 	return &App{
 		config:            cfg,
 		mode:              modeList,
@@ -127,5 +140,6 @@ func New() *App {
 		queryFocused:      true,
 		resultSearchInput: ri,
 		tableSearchInput:  ti,
+		fieldEditInput:    fi,
 	}
 }
