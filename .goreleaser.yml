@@ -46,6 +46,18 @@ changelog:
       - '^test:'
       - '^chore:'
 
+nfpms:
+  - id: dbsurf
+    package_name: dbsurf
+    vendor: jdtoombs
+    homepage: "https://github.com/jdtoombs/dbsurf"
+    maintainer: "jdtoombs <jdtoombs@users.noreply.github.com>"
+    description: "TUI database explorer with vim-style navigation"
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/bin
+
 brews:
   - name: dbsurf
     repository:
@@ -64,3 +76,11 @@ brews:
 release:
   prerelease: auto
   draft: false
+
+publishers:
+  - name: packagecloud
+    ids:
+      - dbsurf
+    cmd: package_cloud push --skip-errors jonny-toombs/dbsurf/any/any {{ .ArtifactPath }}
+    env:
+      - PACKAGECLOUD_TOKEN={{ .Env.PACKAGECLOUD_TOKEN }}
