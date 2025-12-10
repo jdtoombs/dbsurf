@@ -3,6 +3,7 @@ package app
 import (
 	"strings"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -20,6 +21,15 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case clearCopyMsg:
 		a.copySuccess = false
 		return a, nil
+	case spinner.TickMsg:
+		if a.inputTesting {
+			var cmd tea.Cmd
+			a.inputSpinner, cmd = a.inputSpinner.Update(msg)
+			return a, cmd
+		}
+		return a, nil
+	case connectionTestMsg:
+		return a.handleConnectionTestResult(msg)
 	case tea.KeyMsg:
 		if msg.String() == "q" {
 			if a.db != nil {

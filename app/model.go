@@ -5,6 +5,7 @@ import (
 	"dbsurf/config"
 	"dbsurf/db"
 
+	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -17,7 +18,7 @@ const Logo = `
  ██    ██  ██    ██   ▀▀▀▀██▄  ██    ██   ██         ██
  ▀██▄▄███  ███▄▄██▀  █▄▄▄▄▄██  ██▄▄▄███   ██         ██
    ▀▀▀ ▀▀  ▀▀ ▀▀▀     ▀▀▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀         ▀▀
-                       v0.1.1-alpha
+                       v0.1.2-alpha
 `
 
 // Styles
@@ -37,6 +38,9 @@ var (
 
 	dimStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
+
+	errorStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("1"))
 
 	bracketFocusedStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.Color("3")).
@@ -60,6 +64,9 @@ type App struct {
 	connInput         textinput.Model
 	nameInput         textinput.Model
 	inputStep         int
+	inputErr          error
+	inputTesting      bool
+	inputSpinner      spinner.Model
 	err               error
 	width             int
 	height            int
@@ -132,11 +139,16 @@ func New() *App {
 	fi.Placeholder = ""
 	fi.Width = 50
 
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+
 	return &App{
 		config:            cfg,
 		mode:              modeList,
 		connInput:         ci,
 		nameInput:         ni,
+		inputSpinner:      sp,
 		dbSearchInput:     si,
 		queryInput:        qi,
 		queryFocused:      true,
