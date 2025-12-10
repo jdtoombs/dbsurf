@@ -75,11 +75,3 @@ brews:
 release:
   prerelease: auto
   draft: false
-
-publishers:
-  - name: packagecloud
-    ids:
-      - dbsurf
-    cmd: package_cloud push jonny-toombs/dbsurf/any/any {{ .ArtifactPath }}
-    env:
-      - PACKAGECLOUD_TOKEN={{ .Env.PACKAGECLOUD_TOKEN }}

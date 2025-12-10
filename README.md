@@ -12,9 +12,10 @@ brew install jdtoombs/tap/dbsurf
 
 ### Debian/Ubuntu
 
+Download the `.deb` file from the [latest release](https://github.com/jdtoombs/dbsurf/releases/latest) and install with:
+
 ```bash
-curl -s https://packagecloud.io/install/repositories/jonny-toombs/dbsurf/script.deb.sh | sudo bash
-sudo apt-get install dbsurf
+sudo dpkg -i dbsurf_*_linux_amd64.deb
 ```
 
 ## Current Features

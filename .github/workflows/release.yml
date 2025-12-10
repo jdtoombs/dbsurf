@@ -35,22 +35,10 @@ jobs:
         with:
           go-version: '1.23'
 
-      - name: Set up Ruby
-        uses: ruby/setup-ruby@v1
-        with:
-          ruby-version: '3.2'
-
-      - name: Install packagecloud CLI
-        run: gem install package_cloud
-
       - name: Validate secrets
         run: |
           if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
             echo "Error: HOMEBREW_TAP_TOKEN secret is not set"
-            exit 1
-          fi
-          if [ -z "${{ secrets.PACKAGECLOUD_TOKEN }}" ]; then
-            echo "Error: PACKAGECLOUD_TOKEN secret is not set"
             exit 1
           fi
 
@@ -63,4 +51,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
-          PACKAGECLOUD_TOKEN: ${{ secrets.PACKAGECLOUD_TOKEN }}
