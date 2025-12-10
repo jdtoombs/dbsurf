@@ -18,14 +18,11 @@ var editingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true
 
 type clearCopyMsg struct{}
 
-// parseTableName extracts the table name from a simple SELECT query
 func parseTableName(query string) string {
 	re := regexp.MustCompile(`(?i)\bFROM\s+(["\[\]?\w]+\.)?(["\[\]?\w]+)`)
 	matches := re.FindStringSubmatch(query)
 	if len(matches) >= 3 {
-		// Remove quotes/brackets if present
-		table := strings.Trim(matches[2], "\"[]`")
-		return table
+		return strings.Trim(matches[2], "\"[]`")
 	}
 	return ""
 }
@@ -35,7 +32,6 @@ func hasJoin(query string) bool {
 	return re.MatchString(query)
 }
 
-// generateUpdateSQL creates an UPDATE statement for the changed field
 func (a *App) generateUpdateSQL(tableName string, row []string, colIndex int, newValue string, pkColumns []string) string {
 	var b strings.Builder
 	b.WriteString("UPDATE ")
@@ -43,12 +39,11 @@ func (a *App) generateUpdateSQL(tableName string, row []string, colIndex int, ne
 	b.WriteString(" SET ")
 	b.WriteString(a.queryResult.Columns[colIndex])
 	b.WriteString(" = '")
-	b.WriteString(strings.ReplaceAll(newValue, "'", "''")) // escape quotes
+	b.WriteString(strings.ReplaceAll(newValue, "'", "''"))
 	b.WriteString("' WHERE ")
 
 	first := true
 	for _, pkCol := range pkColumns {
-		// Find the index of this PK column in our result set
 		for i, col := range a.queryResult.Columns {
 			if col == pkCol {
 				if !first {
@@ -99,7 +94,6 @@ func (a *App) filterResults() {
 }
 
 func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
-	// Handle column info mode - forward to table for navigation
 	if a.showingColumnInfo {
 		switch msg.String() {
 		case "esc", "?", "q":
@@ -111,7 +105,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, cmd
 	}
 
-	// Handle confirmation mode
 	if a.editConfirming {
 		switch msg.String() {
 		case "y", "Y":
@@ -171,7 +164,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					a.fieldEditInput.Blur()
 					return a, nil
 				}
-				// Generate UPDATE SQL
 				row := a.filteredResultRows[a.resultCursor]
 				a.pendingUpdateSQL = a.generateUpdateSQL(a.queryTableName, row, a.fieldCursor, newValue, a.queryPKColumns)
 				a.editConfirming = true
@@ -284,7 +276,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.queryInput, cmd = a.queryInput.Update(msg)
 		return a, cmd
 	} else {
-		// Navigate results
 		switch msg.String() {
 		case "h", "left":
 			a.resultCursor = moveCursor(a.resultCursor, -1, len(a.filteredResultRows))
@@ -299,7 +290,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.fieldCursor = moveCursor(a.fieldCursor, 1, len(a.queryResult.Columns))
 			}
 		case "i":
-			// Enter edit mode
 			if a.queryResult != nil && len(a.filteredResultRows) > 0 {
 				row := a.filteredResultRows[a.resultCursor]
 				if a.fieldCursor < len(row) {
@@ -330,14 +320,11 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				}
 			}
 		case "?":
-			// Show column info for current table
 			if a.queryTableName != "" {
 				info, err := db.GetColumnInfo(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
 				if err == nil && len(info) > 0 {
-					// Build table with height for pagination (leave room for header/controls)
 					tableHeight := min(len(info), 15)
 					a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
-					// Set cursor to current field if in query results
 					if a.queryResult != nil && a.fieldCursor < len(a.queryResult.Columns) {
 						selectedCol := a.queryResult.Columns[a.fieldCursor]
 						for i, col := range info {
@@ -356,11 +343,8 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 }
 
 func (a *App) viewQuery() string {
-	// Use strings.Builder instead of += concatenation to reduce allocations.
-	// Each += creates a new string; Builder reuses a single buffer.
 	var b strings.Builder
 
-	// Show column info overlay
 	if a.showingColumnInfo {
 		b.WriteString(selectedStyle.Render("Column Info: " + a.queryTableName))
 		b.WriteString("\n\n")
@@ -368,7 +352,6 @@ func (a *App) viewQuery() string {
 		return a.renderFrame(b.String(), "j/k: navigate • esc/?: close")
 	}
 
-	// Show confirmation dialog if confirming an update
 	if a.editConfirming {
 		b.WriteString(selectedStyle.Render("Confirm UPDATE"))
 		b.WriteString("\n\n")
@@ -406,9 +389,7 @@ func (a *App) viewQuery() string {
 		b.WriteString("Error: ")
 		b.WriteString(a.queryErr.Error())
 	} else if a.queryResult != nil && len(a.filteredResultRows) > 0 {
-		// Show current row in JSON-like format with highlighted keys
 		row := a.filteredResultRows[a.resultCursor]
-		// Brackets: yellow when results focused, grey when input focused
 		bracketStyle := dimStyle
 		if !a.queryFocused {
 			bracketStyle = bracketFocusedStyle
@@ -426,7 +407,6 @@ func (a *App) viewQuery() string {
 			}
 			b.WriteString("  ")
 
-			// Highlight selected field when results focused
 			isSelected := !a.queryFocused && j == a.fieldCursor
 			if isSelected {
 				b.WriteString(editingStyle.Render(fmt.Sprintf(`"%s"`, col)))

@@ -158,7 +158,6 @@ func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, erro
 	return columns, nil
 }
 
-// ColumnInfo holds metadata about a database column
 type ColumnInfo struct {
 	Name       string
 	DataType   string
@@ -168,7 +167,6 @@ type ColumnInfo struct {
 	MaxLength  string
 }
 
-// GetColumnInfo retrieves metadata for all columns in a table
 func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, error) {
 	var query string
 	switch dbType {

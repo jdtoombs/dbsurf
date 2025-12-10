@@ -41,7 +41,6 @@ func (a *App) updateList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.dbType = conn.DBType
 			a.db, a.dbErr = db.Connect(conn.ConnString)
 			if a.dbErr == nil {
-				// PostgreSQL: skip db selection, go straight to query mode
 				if a.dbType == "postgres" {
 					a.selectedDatabase = ""
 					a.queryInput.Reset()

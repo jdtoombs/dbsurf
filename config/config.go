@@ -66,7 +66,6 @@ func (c *Config) Save() error {
 }
 
 func (c *Config) AddConnection(name, connString, dbType string) {
-	// Update if exists
 	for i, conn := range c.Connections {
 		if conn.ConnString == connString {
 			c.Connections[i].Name = name
@@ -74,7 +73,6 @@ func (c *Config) AddConnection(name, connString, dbType string) {
 			return
 		}
 	}
-	// Add new
 	c.Connections = append(c.Connections, Connection{
 		Name:       name,
 		ConnString: connString,

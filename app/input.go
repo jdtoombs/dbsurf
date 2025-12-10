@@ -36,13 +36,11 @@ func (a *App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if a.inputStep == 0 {
 			connString := strings.TrimSpace(a.connInput.Value())
 
-			// Format validation
 			if err := db.ValidateConnectionString(connString); err != nil {
 				a.inputErr = err
 				return a, nil
 			}
 
-			// Start live connection test
 			a.inputTesting = true
 			a.inputErr = nil
 			return a, tea.Batch(a.testConnection(connString), a.inputSpinner.Tick)
@@ -62,7 +60,6 @@ func (a *App) updateInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 
-	// Clear error when user types (only in step 0)
 	if a.inputStep == 0 {
 		a.inputErr = nil
 	}
@@ -82,7 +79,6 @@ func (a *App) handleConnectionTestResult(msg connectionTestMsg) (tea.Model, tea.
 		a.inputErr = fmt.Errorf("connection failed: %w", msg.err)
 		return a, nil
 	}
-	// Connection successful - proceed to name input
 	a.inputStep = 1
 	a.connInput.Blur()
 	a.nameInput.Focus()

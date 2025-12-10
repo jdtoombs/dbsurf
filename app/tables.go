@@ -20,7 +20,6 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			a.showingColumnInfo = false
 			return a, nil
 		}
-		// Forward other keys to the table for navigation
 		var cmd tea.Cmd
 		a.columnInfoTable, cmd = a.columnInfoTable.Update(msg)
 		return a, cmd
@@ -60,10 +59,8 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "k", "up":
 		a.tableCursor = moveCursor(a.tableCursor, -1, len(a.filteredTables))
 	case "?":
-		// Show column info for selected table
 		if len(a.filteredTables) > 0 {
 			tableName := a.filteredTables[a.tableCursor]
-			// Clean table name for lookup
 			cleanName := tableName
 			if idx := strings.LastIndex(tableName, "."); idx != -1 {
 				cleanName = strings.Trim(tableName[idx+1:], "[]\"`")
@@ -120,7 +117,6 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a *App) viewTableList() string {
 	var content string
 
-	// Show column info overlay
 	if a.showingColumnInfo {
 		content = selectedStyle.Render("Column Info: "+a.queryTableName) + "\n\n"
 		content += a.columnInfoTable.View()

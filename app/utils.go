@@ -9,7 +9,6 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// filterStrings filters a slice of strings by a query (case-insensitive)
 func filterStrings(items []string, query string) []string {
 	if query == "" {
 		return items
@@ -25,7 +24,6 @@ func filterStrings(items []string, query string) []string {
 	return filtered
 }
 
-// moveCursor adjusts a cursor within bounds, returning the new position
 func moveCursor(cursor, delta, max int) int {
 	cursor += delta
 	if cursor < 0 {
@@ -37,9 +35,7 @@ func moveCursor(cursor, delta, max int) int {
 	return cursor
 }
 
-// buildColumnInfoTable creates a bubbles table for column info display
 func buildColumnInfoTable(columns []db.ColumnInfo, height int) table.Model {
-	// Define table columns
 	cols := []table.Column{
 		{Title: "Column", Width: 20},
 		{Title: "Type", Width: 18},
@@ -48,7 +44,6 @@ func buildColumnInfoTable(columns []db.ColumnInfo, height int) table.Model {
 		{Title: "Default", Width: 20},
 	}
 
-	// Build rows
 	rows := make([]table.Row, len(columns))
 	for i, col := range columns {
 		typeStr := col.DataType
@@ -71,7 +66,6 @@ func buildColumnInfoTable(columns []db.ColumnInfo, height int) table.Model {
 		rows[i] = table.Row{col.Name, typeStr, keyStr, nullStr, defaultStr}
 	}
 
-	// Style the table
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		Bold(true).

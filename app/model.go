@@ -22,7 +22,6 @@ const Logo = `
                        v0.1.2-alpha
 `
 
-// Styles
 var (
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("6")).
