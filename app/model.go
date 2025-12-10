@@ -6,6 +6,7 @@ import (
 	"dbsurf/db"
 
 	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -98,6 +99,9 @@ type App struct {
 	pendingUpdateSQL   string
 	queryTableName     string
 	queryPKColumns     []string
+	// Column info mode
+	showingColumnInfo bool
+	columnInfoTable   table.Model
 	// Table list mode
 	tables           []string
 	filteredTables   []string

@@ -20,7 +20,6 @@ type clearCopyMsg struct{}
 
 // parseTableName extracts the table name from a simple SELECT query
 func parseTableName(query string) string {
-	// Match FROM table_name (with optional schema like schema.table)
 	re := regexp.MustCompile(`(?i)\bFROM\s+(["\[\]?\w]+\.)?(["\[\]?\w]+)`)
 	matches := re.FindStringSubmatch(query)
 	if len(matches) >= 3 {
@@ -31,7 +30,6 @@ func parseTableName(query string) string {
 	return ""
 }
 
-// hasJoin checks if the query contains a JOIN
 func hasJoin(query string) bool {
 	re := regexp.MustCompile(`(?i)\b(JOIN|,)\s+["\[\]?\w]+`)
 	return re.MatchString(query)
@@ -48,7 +46,6 @@ func (a *App) generateUpdateSQL(tableName string, row []string, colIndex int, ne
 	b.WriteString(strings.ReplaceAll(newValue, "'", "''")) // escape quotes
 	b.WriteString("' WHERE ")
 
-	// Build WHERE clause using primary key columns
 	first := true
 	for _, pkCol := range pkColumns {
 		// Find the index of this PK column in our result set
@@ -102,11 +99,22 @@ func (a *App) filterResults() {
 }
 
 func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// Handle column info mode - forward to table for navigation
+	if a.showingColumnInfo {
+		switch msg.String() {
+		case "esc", "?", "q":
+			a.showingColumnInfo = false
+			return a, nil
+		}
+		var cmd tea.Cmd
+		a.columnInfoTable, cmd = a.columnInfoTable.Update(msg)
+		return a, cmd
+	}
+
 	// Handle confirmation mode
 	if a.editConfirming {
 		switch msg.String() {
 		case "y", "Y":
-			// Execute the update
 			fullQuery := a.pendingUpdateSQL
 			if a.dbType == "sqlserver" {
 				fullQuery = fmt.Sprintf("USE [%s]; %s", a.selectedDatabase, a.pendingUpdateSQL)
@@ -115,7 +123,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if err != nil {
 				a.queryErr = err
 			} else {
-				// Re-run the original query to refresh results
 				query := a.queryInput.Value()
 				if a.dbType == "sqlserver" {
 					query = fmt.Sprintf("USE [%s]; %s", a.selectedDatabase, a.queryInput.Value())
@@ -140,7 +147,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, nil
 	}
 
-	// Handle field editing mode
 	if a.fieldEditing {
 		switch msg.String() {
 		case "ctrl+c":
@@ -153,7 +159,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		case "enter":
 			newValue := a.fieldEditInput.Value()
 			if newValue != a.fieldOriginalValue {
-				// Use cached table name and PK from when query was run
 				if a.queryTableName == "" {
 					a.queryErr = fmt.Errorf("could not determine table name from query")
 					a.fieldEditing = false
@@ -180,7 +185,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a, cmd
 	}
 
-	// Handle search mode
 	if a.resultSearching {
 		switch msg.String() {
 		case "esc":
@@ -217,7 +221,7 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				return a, textinput.Blink
 			} else {
 				a.queryInput.Blur()
-				a.fieldCursor = 0 // Reset field cursor when focusing results
+				a.fieldCursor = 0
 			}
 			return a, nil
 		}
@@ -267,7 +271,6 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					a.filterResults()
 					a.resultCursor = 0
 					a.fieldCursor = 0
-					// Cache table name and primary key for edits
 					a.queryTableName = parseTableName(query)
 					a.queryPKColumns = nil
 					if a.queryTableName != "" && !hasJoin(query) {
@@ -326,6 +329,27 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					})
 				}
 			}
+		case "?":
+			// Show column info for current table
+			if a.queryTableName != "" {
+				info, err := db.GetColumnInfo(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
+				if err == nil && len(info) > 0 {
+					// Build table with height for pagination (leave room for header/controls)
+					tableHeight := min(len(info), 15)
+					a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
+					// Set cursor to current field if in query results
+					if a.queryResult != nil && a.fieldCursor < len(a.queryResult.Columns) {
+						selectedCol := a.queryResult.Columns[a.fieldCursor]
+						for i, col := range info {
+							if col.Name == selectedCol {
+								a.columnInfoTable.SetCursor(i)
+								break
+							}
+						}
+					}
+					a.showingColumnInfo = true
+				}
+			}
 		}
 		return a, nil
 	}
@@ -335,6 +359,14 @@ func (a *App) viewQuery() string {
 	// Use strings.Builder instead of += concatenation to reduce allocations.
 	// Each += creates a new string; Builder reuses a single buffer.
 	var b strings.Builder
+
+	// Show column info overlay
+	if a.showingColumnInfo {
+		b.WriteString(selectedStyle.Render("Column Info: " + a.queryTableName))
+		b.WriteString("\n\n")
+		b.WriteString(a.columnInfoTable.View())
+		return a.renderFrame(b.String(), "j/k: navigate • esc/?: close")
+	}
 
 	// Show confirmation dialog if confirming an update
 	if a.editConfirming {
@@ -436,7 +468,7 @@ func (a *App) viewQuery() string {
 	if a.fieldEditing {
 		controls = "enter: save • esc: cancel"
 	} else if !a.queryFocused && a.queryResult != nil && len(a.filteredResultRows) > 0 {
-		controls = "h/l: rows • j/k: fields • i: edit • ctrl+c: copy • /: filter • tab: query • esc: back"
+		controls = "h/l: rows • j/k: fields • i: edit • ?: cols • ctrl+c: copy • /: filter • tab: query • esc: back"
 	} else {
 		controls = "enter: execute • tab: focus • /: filter • ctrl+c: clear • ctrl+t: tables • j/k: nav • esc: back"
 	}

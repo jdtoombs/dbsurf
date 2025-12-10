@@ -158,6 +158,101 @@ func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, erro
 	return columns, nil
 }
 
+// ColumnInfo holds metadata about a database column
+type ColumnInfo struct {
+	Name       string
+	DataType   string
+	IsNullable bool
+	IsPrimary  bool
+	Default    string
+	MaxLength  string
+}
+
+// GetColumnInfo retrieves metadata for all columns in a table
+func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, error) {
+	var query string
+	switch dbType {
+	case "mysql":
+		query = fmt.Sprintf(`
+			SELECT
+				c.COLUMN_NAME,
+				c.DATA_TYPE,
+				c.IS_NULLABLE,
+				CASE WHEN kcu.COLUMN_NAME IS NOT NULL THEN 'YES' ELSE 'NO' END as IS_PRIMARY,
+				COALESCE(c.COLUMN_DEFAULT, ''),
+				COALESCE(c.CHARACTER_MAXIMUM_LENGTH, '')
+			FROM INFORMATION_SCHEMA.COLUMNS c
+			LEFT JOIN INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				ON c.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+				AND c.TABLE_NAME = kcu.TABLE_NAME
+				AND c.COLUMN_NAME = kcu.COLUMN_NAME
+				AND kcu.CONSTRAINT_NAME = 'PRIMARY'
+			WHERE c.TABLE_SCHEMA = '%s' AND c.TABLE_NAME = '%s'
+			ORDER BY c.ORDINAL_POSITION`, dbName, tableName)
+	case "postgres":
+		query = fmt.Sprintf(`
+			SELECT
+				c.column_name,
+				c.data_type,
+				c.is_nullable,
+				CASE WHEN pk.column_name IS NOT NULL THEN 'YES' ELSE 'NO' END as is_primary,
+				COALESCE(c.column_default, ''),
+				COALESCE(c.character_maximum_length::text, '')
+			FROM information_schema.columns c
+			LEFT JOIN (
+				SELECT kcu.column_name
+				FROM information_schema.table_constraints tc
+				JOIN information_schema.key_column_usage kcu
+					ON tc.constraint_name = kcu.constraint_name
+				WHERE tc.table_name = '%s' AND tc.constraint_type = 'PRIMARY KEY'
+			) pk ON c.column_name = pk.column_name
+			WHERE c.table_name = '%s'
+			ORDER BY c.ordinal_position`, tableName, tableName)
+	case "sqlserver":
+		// Extract table name without schema brackets for SQL Server
+		cleanTable := tableName
+		if idx := strings.LastIndex(tableName, "."); idx != -1 {
+			cleanTable = strings.Trim(tableName[idx+1:], "[]")
+		}
+		query = fmt.Sprintf(`
+			SELECT
+				c.COLUMN_NAME,
+				c.DATA_TYPE,
+				c.IS_NULLABLE,
+				CASE WHEN pk.COLUMN_NAME IS NOT NULL THEN 'YES' ELSE 'NO' END as IS_PRIMARY,
+				COALESCE(c.COLUMN_DEFAULT, ''),
+				COALESCE(CAST(c.CHARACTER_MAXIMUM_LENGTH AS VARCHAR), '')
+			FROM [%s].INFORMATION_SCHEMA.COLUMNS c
+			LEFT JOIN (
+				SELECT kcu.COLUMN_NAME
+				FROM [%s].INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+				JOIN [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+					ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+				WHERE tc.TABLE_NAME = '%s' AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+			) pk ON c.COLUMN_NAME = pk.COLUMN_NAME
+			WHERE c.TABLE_NAME = '%s'
+			ORDER BY c.ORDINAL_POSITION`, dbName, dbName, dbName, cleanTable, cleanTable)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var columns []ColumnInfo
+	for rows.Next() {
+		var col ColumnInfo
+		var nullable, primary, maxLen string
+		rows.Scan(&col.Name, &col.DataType, &nullable, &primary, &col.Default, &maxLen)
+		col.IsNullable = nullable == "YES"
+		col.IsPrimary = primary == "YES"
+		col.MaxLength = maxLen
+		columns = append(columns, col)
+	}
+	return columns, nil
+}
+
 func RunQuery(db *sql.DB, query string) (*QueryResult, error) {
 	rows, err := db.Query(query)
 	if err != nil {

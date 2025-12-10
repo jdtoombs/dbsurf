@@ -14,6 +14,18 @@ func (a *App) filterTables() {
 }
 
 func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if a.showingColumnInfo {
+		switch msg.String() {
+		case "esc", "?", "q":
+			a.showingColumnInfo = false
+			return a, nil
+		}
+		// Forward other keys to the table for navigation
+		var cmd tea.Cmd
+		a.columnInfoTable, cmd = a.columnInfoTable.Update(msg)
+		return a, cmd
+	}
+
 	if a.tableSearching {
 		switch msg.String() {
 		case "esc":
@@ -47,6 +59,25 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.tableCursor = moveCursor(a.tableCursor, 1, len(a.filteredTables))
 	case "k", "up":
 		a.tableCursor = moveCursor(a.tableCursor, -1, len(a.filteredTables))
+	case "?":
+		// Show column info for selected table
+		if len(a.filteredTables) > 0 {
+			tableName := a.filteredTables[a.tableCursor]
+			// Clean table name for lookup
+			cleanName := tableName
+			if idx := strings.LastIndex(tableName, "."); idx != -1 {
+				cleanName = strings.Trim(tableName[idx+1:], "[]\"`")
+			} else {
+				cleanName = strings.Trim(tableName, "[]\"`")
+			}
+			info, err := db.GetColumnInfo(a.db, a.selectedDatabase, cleanName, a.dbType)
+			if err == nil && len(info) > 0 {
+				a.queryTableName = cleanName
+				tableHeight := min(len(info), 15)
+				a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
+				a.showingColumnInfo = true
+			}
+		}
 	case "enter":
 		if len(a.filteredTables) > 0 {
 			tableName := a.filteredTables[a.tableCursor]
@@ -89,6 +120,13 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (a *App) viewTableList() string {
 	var content string
 
+	// Show column info overlay
+	if a.showingColumnInfo {
+		content = selectedStyle.Render("Column Info: "+a.queryTableName) + "\n\n"
+		content += a.columnInfoTable.View()
+		return a.renderFrame(content, "j/k: navigate • esc/?: close")
+	}
+
 	content = "Database: " + selectedStyle.Render(a.selectedDatabase) + "\n\n"
 
 	if a.tableSearching {
@@ -127,7 +165,7 @@ func (a *App) viewTableList() string {
 		content += dimStyle.Render("No tables found")
 	}
 
-	controls := "j/k: navigate • /: search • enter: select • esc: back • q: quit"
+	controls := "j/k: navigate • /: search • ?: cols • enter: select • esc: back • q: quit"
 
 	return a.renderFrame(content, controls)
 }
