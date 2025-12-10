@@ -43,6 +43,17 @@ jobs:
       - name: Install packagecloud CLI
         run: gem install package_cloud
 
+      - name: Validate secrets
+        run: |
+          if [ -z "${{ secrets.HOMEBREW_TAP_TOKEN }}" ]; then
+            echo "Error: HOMEBREW_TAP_TOKEN secret is not set"
+            exit 1
+          fi
+          if [ -z "${{ secrets.PACKAGECLOUD_TOKEN }}" ]; then
+            echo "Error: PACKAGECLOUD_TOKEN secret is not set"
+            exit 1
+          fi
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@v6
         with:

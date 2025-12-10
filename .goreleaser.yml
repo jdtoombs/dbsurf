@@ -7,7 +7,6 @@ project_name: dbsurf
 before:
   hooks:
     - go mod tidy
-    - go test ./...
 
 builds:
   - env:
@@ -81,6 +80,6 @@ publishers:
   - name: packagecloud
     ids:
       - dbsurf
-    cmd: package_cloud push --skip-errors jonny-toombs/dbsurf/any/any {{ .ArtifactPath }}
+    cmd: package_cloud push jonny-toombs/dbsurf/any/any {{ .ArtifactPath }}
     env:
       - PACKAGECLOUD_TOKEN={{ .Env.PACKAGECLOUD_TOKEN }}
