@@ -54,15 +54,15 @@ const (
 )
 
 type App struct {
-	config    *config.Config
-	cursor    int
-	mode      mode
-	connInput textinput.Model
-	nameInput textinput.Model
-	inputStep int
-	err       error
-	width     int
-	height    int
+	config            *config.Config
+	cursor            int
+	mode              mode
+	connInput         textinput.Model
+	nameInput         textinput.Model
+	inputStep         int
+	err               error
+	width             int
+	height            int
 	db                *sql.DB
 	dbErr             error
 	dbType            string
@@ -72,31 +72,33 @@ type App struct {
 	dbSearching       bool
 	dbSearchInput     textinput.Model
 	// Query mode
-	selectedDatabase    string
-	queryInput          textinput.Model
-	queryResult         *db.QueryResult
-	queryErr            error
-	queryFocused        bool
-	resultCursor        int
-	resultSearching     bool
-	resultSearchInput   textinput.Model
-	resultFilter        string
-	filteredResultRows  [][]string
+	selectedDatabase   string
+	queryInput         textinput.Model
+	queryResult        *db.QueryResult
+	queryErr           error
+	queryFocused       bool
+	resultCursor       int
+	resultSearching    bool
+	resultSearchInput  textinput.Model
+	resultFilter       string
+	filteredResultRows [][]string
 	// Field editing
-	fieldCursor         int
-	fieldEditing        bool
-	fieldEditInput      textinput.Model
-	fieldOriginalValue  string
-	editConfirming      bool
-	pendingUpdateSQL    string
-	queryTableName      string
-	queryPKColumns      []string
+	fieldCursor        int
+	fieldEditing       bool
+	fieldEditInput     textinput.Model
+	fieldOriginalValue string
+	editConfirming     bool
+	pendingUpdateSQL   string
+	queryTableName     string
+	queryPKColumns     []string
 	// Table list mode
 	tables           []string
 	filteredTables   []string
 	tableCursor      int
 	tableSearching   bool
 	tableSearchInput textinput.Model
+	// Copy mode
+	copySuccess bool
 }
 
 func New() *App {

@@ -89,7 +89,6 @@ func TestModeTransition_InputEscape(t *testing.T) {
 	}
 }
 
-
 func TestFilterStrings(t *testing.T) {
 	items := []string{"users", "orders", "user_sessions", "products"}
 
@@ -98,7 +97,7 @@ func TestFilterStrings(t *testing.T) {
 		expected int
 	}{
 		{"", 4},
-		{"user", 2},     // "users" and "user_sessions"
+		{"user", 2}, // "users" and "user_sessions"
 		{"orders", 1},
 		{"xyz", 0},
 	}

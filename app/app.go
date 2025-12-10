@@ -17,6 +17,9 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		a.width = msg.Width
 		a.height = msg.Height
 		return a, nil
+	case clearCopyMsg:
+		a.copySuccess = false
+		return a, nil
 	case tea.KeyMsg:
 		if msg.String() == "q" {
 			if a.db != nil {
@@ -72,7 +75,7 @@ func (a *App) renderFrame(content, controls string) string {
 		boxWidth = 40
 	}
 
-	box := boxStyle.Width(boxWidth - 4) 
+	box := boxStyle.Width(boxWidth - 4)
 	boxedContent := box.Render(content)
 
 	logoRendered = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logoRendered)

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
+	"github.com/atotto/clipboard"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -13,6 +15,8 @@ import (
 
 var valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
 var editingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
+
+type clearCopyMsg struct{}
 
 // parseTableName extracts the table name from a simple SELECT query
 func parseTableName(query string) string {
@@ -303,6 +307,25 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					return a, textinput.Blink
 				}
 			}
+		case "ctrl+c":
+			if a.queryResult != nil && len(a.filteredResultRows) > 0 {
+				row := a.filteredResultRows[a.resultCursor]
+				var jsonParts []string
+				for i, col := range a.queryResult.Columns {
+					val := ""
+					if i < len(row) {
+						val = row[i]
+					}
+					jsonParts = append(jsonParts, fmt.Sprintf(`"%s": "%s"`, col, val))
+				}
+				jsonStr := "{" + strings.Join(jsonParts, ", ") + "}"
+				if err := clipboard.WriteAll(jsonStr); err == nil {
+					a.copySuccess = true
+					return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+						return clearCopyMsg{}
+					})
+				}
+			}
 		}
 		return a, nil
 	}
@@ -400,6 +423,9 @@ func (a *App) viewQuery() string {
 			b.WriteString(selectedStyle.Render(fmt.Sprintf("%d", len(a.queryResult.Rows))))
 			b.WriteString(dimStyle.Render(")"))
 		}
+		if a.copySuccess {
+			b.WriteString(selectedStyle.Render(" Copied!"))
+		}
 	} else if a.queryResult != nil {
 		b.WriteString(dimStyle.Render("No results"))
 	} else {
@@ -410,7 +436,7 @@ func (a *App) viewQuery() string {
 	if a.fieldEditing {
 		controls = "enter: save • esc: cancel"
 	} else if !a.queryFocused && a.queryResult != nil && len(a.filteredResultRows) > 0 {
-		controls = "h/l: rows • j/k: fields • i: edit • /: filter • tab: query • esc: back"
+		controls = "h/l: rows • j/k: fields • i: edit • ctrl+c: copy • /: filter • tab: query • esc: back"
 	} else {
 		controls = "enter: execute • tab: focus • /: filter • ctrl+c: clear • ctrl+t: tables • j/k: nav • esc: back"
 	}
