@@ -135,12 +135,18 @@ func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, erro
 			WHERE i.indrelid = '%s'::regclass AND i.indisprimary
 			ORDER BY array_position(i.indkey, a.attnum)`, tableName)
 	case "sqlserver":
+		cleanTable := tableName
+		if idx := strings.LastIndex(tableName, "."); idx != -1 {
+			cleanTable = strings.Trim(tableName[idx+1:], "[]")
+		} else {
+			cleanTable = strings.Trim(tableName, "[]")
+		}
 		query = fmt.Sprintf(`
 			SELECT COLUMN_NAME
 			FROM [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE
 			WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1
 			AND TABLE_NAME = '%s'
-			ORDER BY ORDINAL_POSITION`, dbName, tableName)
+			ORDER BY ORDINAL_POSITION`, dbName, cleanTable)
 	}
 
 	rows, err := db.Query(query)
