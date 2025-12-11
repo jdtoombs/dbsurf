@@ -30,6 +30,21 @@ sudo dpkg -i dbsurf_*_linux_amd64.deb
 - **Copy to Clipboard**: Copy current record as JSON with `ctrl+c`
 - **Primary Key Detection**: Automatic PK detection for safe UPDATE generation
 
+### Examples
+
+**Table Browser** - Quick access to tables via `ctrl+t`
+![Table Browser](assets/browse_tables.png)
+
+**Search/Filter** - Filter results with `/` key
+![Search/Filter](assets/filter_results.png)
+
+**Table Structure** - View column info with `?` key
+![Table Structure](assets/table_structure.png)
+
+**Inline Editing** - Edit field values directly with `i` key, generates UPDATE statements with confirmation
+![Inline Editing](assets/inline_edit.png)
+![Inline Edit Confirmation](assets/inline_confirm.png)
+
 ## Tech Stack
 
 - Go
