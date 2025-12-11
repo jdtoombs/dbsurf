@@ -61,12 +61,7 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "?":
 		if len(a.filteredTables) > 0 {
 			tableName := a.filteredTables[a.tableCursor]
-			cleanName := tableName
-			if idx := strings.LastIndex(tableName, "."); idx != -1 {
-				cleanName = strings.Trim(tableName[idx+1:], "[]\"`")
-			} else {
-				cleanName = strings.Trim(tableName, "[]\"`")
-			}
+			cleanName := db.CleanTableName(tableName, a.dbType)
 			info, err := db.GetColumnInfo(a.db, a.selectedDatabase, cleanName, a.dbType)
 			if err == nil && len(info) > 0 {
 				a.queryTableName = cleanName
@@ -78,11 +73,9 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		if len(a.filteredTables) > 0 {
 			tableName := a.filteredTables[a.tableCursor]
-			query := fmt.Sprintf("SELECT * FROM %s", tableName)
-			if a.dbType == "sqlserver" {
-				query = fmt.Sprintf("USE [%s]; SELECT * FROM %s", a.selectedDatabase, tableName)
-			}
-			result, err := db.RunQuery(a.db, query)
+			selectQuery := fmt.Sprintf("SELECT * FROM %s", tableName)
+			fullQuery := db.PrependUseDatabase(selectQuery, a.selectedDatabase, a.dbType)
+			result, err := db.RunQuery(a.db, fullQuery)
 			if err != nil {
 				a.queryErr = err
 				a.queryResult = nil
@@ -90,20 +83,13 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				a.queryErr = nil
 				a.queryResult = result
-				a.queryInput.SetValue(fmt.Sprintf("SELECT * FROM %s", tableName))
+				a.queryInput.SetValue(selectQuery)
 				a.resultFilter = ""
 				a.resultSearchInput.SetValue("")
 				a.filterResults()
 				a.resultCursor = 0
 				a.fieldCursor = 0
-				// Cache table name and primary key for edits
-				// Strip schema prefix if present (e.g., [dbo].[users] -> users)
-				cleanName := tableName
-				if idx := strings.LastIndex(tableName, "."); idx != -1 {
-					cleanName = strings.Trim(tableName[idx+1:], "[]\"`")
-				} else {
-					cleanName = strings.Trim(tableName, "[]\"`")
-				}
+				cleanName := db.CleanTableName(tableName, a.dbType)
 				a.queryTableName = cleanName
 				a.queryPKColumns, _ = db.GetPrimaryKey(a.db, a.selectedDatabase, cleanName, a.dbType)
 			}
@@ -133,7 +119,7 @@ func (a *App) viewTableList() string {
 
 	content += "Tables:\n"
 	if len(a.filteredTables) > 0 {
-		visibleCount := 10
+		visibleCount := DefaultVisibleRows
 
 		scrollOffset := 0
 		if a.tableCursor >= visibleCount {

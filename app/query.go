@@ -13,8 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-var valueStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("7"))
-var editingStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("3")).Bold(true)
+var valueStyle = lipgloss.NewStyle().Foreground(ColorText)
 
 type clearCopyMsg struct{}
 
@@ -32,67 +31,6 @@ func hasJoin(query string) bool {
 	return re.MatchString(query)
 }
 
-func (a *App) generateUpdateSQL(tableName string, row []string, colIndex int, newValue string, pkColumns []string) string {
-	var b strings.Builder
-	b.WriteString("UPDATE ")
-	b.WriteString(tableName)
-	b.WriteString(" SET ")
-	b.WriteString(a.queryResult.Columns[colIndex])
-	b.WriteString(" = '")
-	b.WriteString(strings.ReplaceAll(newValue, "'", "''"))
-	b.WriteString("' WHERE ")
-
-	first := true
-	for _, pkCol := range pkColumns {
-		for i, col := range a.queryResult.Columns {
-			if col == pkCol {
-				if !first {
-					b.WriteString(" AND ")
-				}
-				first = false
-				b.WriteString(col)
-				if row[i] == "NULL" {
-					b.WriteString(" IS NULL")
-				} else {
-					b.WriteString(" = '")
-					b.WriteString(strings.ReplaceAll(row[i], "'", "''"))
-					b.WriteString("'")
-				}
-				break
-			}
-		}
-	}
-
-	return b.String()
-}
-
-func (a *App) filterResults() {
-	if a.queryResult == nil {
-		a.filteredResultRows = nil
-		return
-	}
-
-	if a.resultFilter == "" {
-		a.filteredResultRows = a.queryResult.Rows
-		return
-	}
-
-	filter := strings.ToLower(a.resultFilter)
-	filtered := [][]string{}
-	for _, row := range a.queryResult.Rows {
-		for _, col := range row {
-			if strings.Contains(strings.ToLower(col), filter) {
-				filtered = append(filtered, row)
-				break
-			}
-		}
-	}
-	a.filteredResultRows = filtered
-	if a.resultCursor >= len(a.filteredResultRows) {
-		a.resultCursor = max(0, len(a.filteredResultRows)-1)
-	}
-}
-
 func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if a.showingColumnInfo {
 		switch msg.String() {
@@ -106,101 +44,21 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if a.editConfirming {
-		switch msg.String() {
-		case "y", "Y":
-			fullQuery := a.pendingUpdateSQL
-			if a.dbType == "sqlserver" {
-				fullQuery = fmt.Sprintf("USE [%s]; %s", a.selectedDatabase, a.pendingUpdateSQL)
-			}
-			_, err := db.RunQuery(a.db, fullQuery)
-			if err != nil {
-				a.queryErr = err
-			} else {
-				query := a.queryInput.Value()
-				if a.dbType == "sqlserver" {
-					query = fmt.Sprintf("USE [%s]; %s", a.selectedDatabase, a.queryInput.Value())
-				}
-				result, err := db.RunQuery(a.db, query)
-				if err != nil {
-					a.queryErr = err
-				} else {
-					a.queryErr = nil
-					a.queryResult = result
-					a.filterResults()
-				}
-			}
-			a.editConfirming = false
-			a.pendingUpdateSQL = ""
-			return a, nil
-		case "n", "N", "esc":
-			a.editConfirming = false
-			a.pendingUpdateSQL = ""
-			return a, nil
-		}
-		return a, nil
+		return a.updateEditConfirm(msg)
 	}
 
 	if a.fieldEditing {
-		switch msg.String() {
-		case "ctrl+c":
-			a.fieldEditInput.SetValue("")
-			return a, nil
-		case "esc":
-			a.fieldEditing = false
-			a.fieldEditInput.Blur()
-			return a, nil
-		case "enter":
-			newValue := a.fieldEditInput.Value()
-			if newValue != a.fieldOriginalValue {
-				if a.queryTableName == "" {
-					a.queryErr = fmt.Errorf("could not determine table name from query")
-					a.fieldEditing = false
-					a.fieldEditInput.Blur()
-					return a, nil
-				}
-				if len(a.queryPKColumns) == 0 {
-					a.queryErr = fmt.Errorf("table has no primary key or query contains JOIN")
-					a.fieldEditing = false
-					a.fieldEditInput.Blur()
-					return a, nil
-				}
-				row := a.filteredResultRows[a.resultCursor]
-				a.pendingUpdateSQL = a.generateUpdateSQL(a.queryTableName, row, a.fieldCursor, newValue, a.queryPKColumns)
-				a.editConfirming = true
-			}
-			a.fieldEditing = false
-			a.fieldEditInput.Blur()
-			return a, nil
-		}
-		var cmd tea.Cmd
-		a.fieldEditInput, cmd = a.fieldEditInput.Update(msg)
-		return a, cmd
+		return a.updateFieldEdit(msg)
 	}
 
 	if a.resultSearching {
-		switch msg.String() {
-		case "esc":
-			a.resultSearching = false
-			a.resultSearchInput.Blur()
-			return a, nil
-		case "enter":
-			a.resultFilter = a.resultSearchInput.Value()
-			a.filterResults()
-			a.resultSearching = false
-			a.resultSearchInput.Blur()
-			return a, nil
-		}
-		var cmd tea.Cmd
-		a.resultSearchInput, cmd = a.resultSearchInput.Update(msg)
-		return a, cmd
+		return a.updateResultSearch(msg)
 	}
 
 	switch msg.String() {
 	case "esc":
 		if a.resultFilter != "" {
-			a.resultFilter = ""
-			a.resultSearchInput.SetValue("")
-			a.filterResults()
+			a.clearResultFilter()
 			return a, nil
 		}
 		a.mode = modeConnected
@@ -219,9 +77,7 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	case "/":
 		if !a.queryFocused && a.queryResult != nil {
-			a.resultSearching = true
-			a.resultSearchInput.Focus()
-			return a, textinput.Blink
+			return a, a.startResultSearch()
 		}
 	case "ctrl+t":
 		tables, err := db.ListTables(a.db, a.selectedDatabase, a.dbType)
@@ -239,107 +95,105 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	if a.queryFocused {
-		switch msg.String() {
-		case "ctrl+c":
-			a.queryInput.SetValue("")
-			return a, nil
-		case "enter":
-			query := a.queryInput.Value()
-			if query != "" {
-				fullQuery := query
-				if a.dbType == "sqlserver" {
-					fullQuery = fmt.Sprintf("USE [%s]; %s", a.selectedDatabase, query)
-				}
-				result, err := db.RunQuery(a.db, fullQuery)
-				if err != nil {
-					a.queryErr = err
-					a.queryResult = nil
-					a.filteredResultRows = nil
-				} else {
-					a.queryErr = nil
-					a.queryResult = result
-					a.resultFilter = ""
-					a.resultSearchInput.SetValue("")
-					a.filterResults()
-					a.resultCursor = 0
-					a.fieldCursor = 0
-					a.queryTableName = parseTableName(query)
-					a.queryPKColumns = nil
-					if a.queryTableName != "" && !hasJoin(query) {
-						a.queryPKColumns, _ = db.GetPrimaryKey(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
-					}
-				}
-			}
-			return a, nil
-		}
-		var cmd tea.Cmd
-		a.queryInput, cmd = a.queryInput.Update(msg)
-		return a, cmd
+		return a.updateQueryInput(msg)
 	} else {
-		switch msg.String() {
-		case "h", "left":
-			a.resultCursor = moveCursor(a.resultCursor, -1, len(a.filteredResultRows))
-		case "l", "right":
-			a.resultCursor = moveCursor(a.resultCursor, 1, len(a.filteredResultRows))
-		case "k", "up":
-			if a.queryResult != nil && len(a.queryResult.Columns) > 0 {
-				a.fieldCursor = moveCursor(a.fieldCursor, -1, len(a.queryResult.Columns))
-			}
-		case "j", "down":
-			if a.queryResult != nil && len(a.queryResult.Columns) > 0 {
-				a.fieldCursor = moveCursor(a.fieldCursor, 1, len(a.queryResult.Columns))
-			}
-		case "i":
-			if a.queryResult != nil && len(a.filteredResultRows) > 0 {
-				row := a.filteredResultRows[a.resultCursor]
-				if a.fieldCursor < len(row) {
-					a.fieldOriginalValue = row[a.fieldCursor]
-					a.fieldEditInput.SetValue(a.fieldOriginalValue)
-					a.fieldEditInput.Focus()
-					a.fieldEditing = true
-					return a, textinput.Blink
-				}
-			}
-		case "ctrl+c":
-			if a.queryResult != nil && len(a.filteredResultRows) > 0 {
-				row := a.filteredResultRows[a.resultCursor]
-				var jsonParts []string
-				for i, col := range a.queryResult.Columns {
-					val := ""
-					if i < len(row) {
-						val = row[i]
-					}
-					jsonParts = append(jsonParts, fmt.Sprintf(`"%s": "%s"`, col, val))
-				}
-				jsonStr := "{" + strings.Join(jsonParts, ", ") + "}"
-				if err := clipboard.WriteAll(jsonStr); err == nil {
-					a.copySuccess = true
-					return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
-						return clearCopyMsg{}
-					})
-				}
-			}
-		case "?":
-			if a.queryTableName != "" {
-				info, err := db.GetColumnInfo(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
-				if err == nil && len(info) > 0 {
-					tableHeight := min(len(info), 15)
-					a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
-					if a.queryResult != nil && a.fieldCursor < len(a.queryResult.Columns) {
-						selectedCol := a.queryResult.Columns[a.fieldCursor]
-						for i, col := range info {
-							if col.Name == selectedCol {
-								a.columnInfoTable.SetCursor(i)
-								break
-							}
-						}
-					}
-					a.showingColumnInfo = true
+		return a.updateResultNavigation(msg)
+	}
+}
+
+func (a *App) updateQueryInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "ctrl+c":
+		a.queryInput.SetValue("")
+		return a, nil
+	case "enter":
+		query := a.queryInput.Value()
+		if query != "" {
+			fullQuery := db.PrependUseDatabase(query, a.selectedDatabase, a.dbType)
+			result, err := db.RunQuery(a.db, fullQuery)
+			if err != nil {
+				a.queryErr = err
+				a.queryResult = nil
+				a.filteredResultRows = nil
+			} else {
+				a.queryErr = nil
+				a.queryResult = result
+				a.resultFilter = ""
+				a.resultSearchInput.SetValue("")
+				a.filterResults()
+				a.resultCursor = 0
+				a.fieldCursor = 0
+				a.queryTableName = parseTableName(query)
+				a.queryPKColumns = nil
+				if a.queryTableName != "" && !hasJoin(query) {
+					a.queryPKColumns, _ = db.GetPrimaryKey(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
 				}
 			}
 		}
 		return a, nil
 	}
+	var cmd tea.Cmd
+	a.queryInput, cmd = a.queryInput.Update(msg)
+	return a, cmd
+}
+
+func (a *App) updateResultNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "h", "left":
+		a.resultCursor = moveCursor(a.resultCursor, -1, len(a.filteredResultRows))
+	case "l", "right":
+		a.resultCursor = moveCursor(a.resultCursor, 1, len(a.filteredResultRows))
+	case "k", "up":
+		if a.queryResult != nil && len(a.queryResult.Columns) > 0 {
+			a.fieldCursor = moveCursor(a.fieldCursor, -1, len(a.queryResult.Columns))
+		}
+	case "j", "down":
+		if a.queryResult != nil && len(a.queryResult.Columns) > 0 {
+			a.fieldCursor = moveCursor(a.fieldCursor, 1, len(a.queryResult.Columns))
+		}
+	case "i":
+		if cmd := a.startFieldEdit(); cmd != nil {
+			return a, cmd
+		}
+	case "ctrl+c":
+		if a.queryResult != nil && len(a.filteredResultRows) > 0 {
+			row := a.filteredResultRows[a.resultCursor]
+			var jsonParts []string
+			for i, col := range a.queryResult.Columns {
+				val := ""
+				if i < len(row) {
+					val = row[i]
+				}
+				jsonParts = append(jsonParts, fmt.Sprintf(`"%s": "%s"`, col, val))
+			}
+			jsonStr := "{" + strings.Join(jsonParts, ", ") + "}"
+			if err := clipboard.WriteAll(jsonStr); err == nil {
+				a.copySuccess = true
+				return a, tea.Tick(2*time.Second, func(t time.Time) tea.Msg {
+					return clearCopyMsg{}
+				})
+			}
+		}
+	case "?":
+		if a.queryTableName != "" {
+			info, err := db.GetColumnInfo(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
+			if err == nil && len(info) > 0 {
+				tableHeight := min(len(info), 15)
+				a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
+				if a.queryResult != nil && a.fieldCursor < len(a.queryResult.Columns) {
+					selectedCol := a.queryResult.Columns[a.fieldCursor]
+					for i, col := range info {
+						if col.Name == selectedCol {
+							a.columnInfoTable.SetCursor(i)
+							break
+						}
+					}
+				}
+				a.showingColumnInfo = true
+			}
+		}
+	}
+	return a, nil
 }
 
 func (a *App) viewQuery() string {
@@ -353,14 +207,7 @@ func (a *App) viewQuery() string {
 	}
 
 	if a.editConfirming {
-		b.WriteString(selectedStyle.Render("Confirm UPDATE"))
-		b.WriteString("\n\n")
-		b.WriteString(dimStyle.Render(a.pendingUpdateSQL))
-		b.WriteString("\n\n")
-		b.WriteString("Execute this query? ")
-		b.WriteString(selectedStyle.Render("(y/n)"))
-		controls := "y: execute • n/esc: cancel"
-		return a.renderFrame(b.String(), controls)
+		return a.viewEditConfirm()
 	}
 
 	b.WriteString("Database: ")

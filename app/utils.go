@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
-	"github.com/charmbracelet/lipgloss"
 )
 
 func filterStrings(items []string, query string) []string {
@@ -69,13 +68,13 @@ func buildColumnInfoTable(columns []db.ColumnInfo, height int) table.Model {
 	s := table.DefaultStyles()
 	s.Header = s.Header.
 		Bold(true).
-		Foreground(lipgloss.Color("6")).
+		Foreground(ColorPrimary).
 		Padding(0, 1)
 	s.Selected = s.Selected.
-		Foreground(lipgloss.Color("3")).
+		Foreground(ColorWarning).
 		Bold(true)
 	s.Cell = s.Cell.
-		Foreground(lipgloss.Color("7")).
+		Foreground(ColorText).
 		Padding(0, 1)
 
 	t := table.New(

@@ -88,7 +88,7 @@ func (a *App) viewConnected() string {
 
 		content += "Databases:\n"
 		if len(a.filteredDatabases) > 0 {
-			visibleCount := 10
+			visibleCount := DefaultVisibleRows
 
 			scrollOffset := 0
 			if a.dbCursor >= visibleCount {

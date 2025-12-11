@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"dbsurf/config"
 	"dbsurf/db"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
@@ -11,7 +12,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-const Logo = `
+const logoWidth = 56
+
+var logoArt = `
        ▄▄  ▄▄                                         ▄▄▄▄
        ██  ██                                        ██▀▀▀
   ▄███▄██  ██▄███▄   ▄▄█████▄  ██    ██   ██▄████  ███████
@@ -19,31 +22,40 @@ const Logo = `
  ██    ██  ██    ██   ▀▀▀▀██▄  ██    ██   ██         ██
  ▀██▄▄███  ███▄▄██▀  █▄▄▄▄▄██  ██▄▄▄███   ██         ██
    ▀▀▀ ▀▀  ▀▀ ▀▀▀     ▀▀▀▀▀▀    ▀▀▀▀ ▀▀   ▀▀         ▀▀
-                       v0.1.2-alpha
 `
+
+func centeredVersion() string {
+	padding := (logoWidth - len(Version)) / 2
+	if padding < 0 {
+		padding = 0
+	}
+	return strings.Repeat(" ", padding) + Version
+}
+
+var Logo = logoArt + centeredVersion()
 
 var (
 	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("6")).
+			Foreground(ColorPrimary).
 			Bold(true)
 
 	boxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
-			BorderForeground(lipgloss.Color("6")).
+			BorderForeground(ColorPrimary).
 			Padding(1, 2)
 
 	selectedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("2")).
+			Foreground(ColorSuccess).
 			Bold(true)
 
 	dimStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("8"))
+			Foreground(ColorMuted)
 
 	errorStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("1"))
+			Foreground(ColorError)
 
 	bracketFocusedStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("3")).
+				Foreground(ColorWarning).
 				Bold(true)
 )
 
@@ -144,7 +156,7 @@ func New() *App {
 
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
-	sp.Style = lipgloss.NewStyle().Foreground(lipgloss.Color("6"))
+	sp.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
 
 	return &App{
 		config:            cfg,

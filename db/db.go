@@ -135,12 +135,7 @@ func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, erro
 			WHERE i.indrelid = '%s'::regclass AND i.indisprimary
 			ORDER BY array_position(i.indkey, a.attnum)`, tableName)
 	case "sqlserver":
-		cleanTable := tableName
-		if idx := strings.LastIndex(tableName, "."); idx != -1 {
-			cleanTable = strings.Trim(tableName[idx+1:], "[]")
-		} else {
-			cleanTable = strings.Trim(tableName, "[]")
-		}
+		cleanTable := CleanTableName(tableName, dbType)
 		query = fmt.Sprintf(`
 			SELECT COLUMN_NAME
 			FROM [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE
@@ -213,11 +208,7 @@ func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, 
 			WHERE c.table_name = '%s'
 			ORDER BY c.ordinal_position`, tableName, tableName)
 	case "sqlserver":
-		// Extract table name without schema brackets for SQL Server
-		cleanTable := tableName
-		if idx := strings.LastIndex(tableName, "."); idx != -1 {
-			cleanTable = strings.Trim(tableName[idx+1:], "[]")
-		}
+		cleanTable := CleanTableName(tableName, dbType)
 		query = fmt.Sprintf(`
 			SELECT
 				c.COLUMN_NAME,
