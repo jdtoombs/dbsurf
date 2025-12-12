@@ -41,14 +41,14 @@ func (a *App) updateResultSearch(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		a.resultSearchInput.Blur()
 		return a, nil
 	case "enter":
-		a.resultFilter = a.resultSearchInput.Value()
-		a.filterResults()
 		a.resultSearching = false
 		a.resultSearchInput.Blur()
 		return a, nil
 	}
 	var cmd tea.Cmd
 	a.resultSearchInput, cmd = a.resultSearchInput.Update(msg)
+	a.resultFilter = a.resultSearchInput.Value()
+	a.filterResults()
 	return a, cmd
 }
 

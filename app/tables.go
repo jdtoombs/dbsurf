@@ -22,14 +22,14 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.columnInfoSearchInput.Blur()
 				return a, nil
 			case "enter":
-				a.columnInfoFilter = a.columnInfoSearchInput.Value()
-				a.filterAndRebuildColumnInfo()
 				a.columnInfoSearching = false
 				a.columnInfoSearchInput.Blur()
 				return a, nil
 			}
 			var cmd tea.Cmd
 			a.columnInfoSearchInput, cmd = a.columnInfoSearchInput.Update(msg)
+			a.columnInfoFilter = a.columnInfoSearchInput.Value()
+			a.filterAndRebuildColumnInfo()
 			return a, cmd
 		}
 
