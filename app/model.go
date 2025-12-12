@@ -9,6 +9,7 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -57,6 +58,10 @@ var (
 	bracketFocusedStyle = lipgloss.NewStyle().
 				Foreground(ColorWarning).
 				Bold(true)
+
+	inputLabelStyle = lipgloss.NewStyle().
+			Foreground(ColorWarning).
+			Bold(true)
 )
 
 type mode int
@@ -111,8 +116,13 @@ type App struct {
 	queryTableName     string
 	queryPKColumns     []string
 	// Column info mode
-	showingColumnInfo bool
-	columnInfoTable   table.Model
+	showingColumnInfo       bool
+	columnInfoTable         table.Model
+	columnInfoData          []db.ColumnInfo
+	filteredColumnInfo      []db.ColumnInfo
+	columnInfoSearching     bool
+	columnInfoSearchInput   textinput.Model
+	columnInfoFilter        string
 	// Table list mode
 	tables           []string
 	filteredTables   []string
@@ -121,6 +131,8 @@ type App struct {
 	tableSearchInput textinput.Model
 	// Copy mode
 	copySuccess bool
+	// Viewport for scrollable content
+	viewport viewport.Model
 }
 
 func New() *App {
@@ -154,21 +166,32 @@ func New() *App {
 	fi.Placeholder = ""
 	fi.Width = 50
 
+	cfi := textinput.New()
+	cfi.Placeholder = "Filter columns..."
+	cfi.Width = 30
+
 	sp := spinner.New()
 	sp.Spinner = spinner.Dot
 	sp.Style = lipgloss.NewStyle().Foreground(ColorPrimary)
 
+	// Initialize viewport with disabled keybindings (we control scrolling programmatically)
+	vp := viewport.New(80, 10)
+	vp.KeyMap = viewport.KeyMap{}
+	vp.MouseWheelEnabled = true
+
 	return &App{
-		config:            cfg,
-		mode:              modeList,
-		connInput:         ci,
-		nameInput:         ni,
-		inputSpinner:      sp,
-		dbSearchInput:     si,
-		queryInput:        qi,
-		queryFocused:      true,
-		resultSearchInput: ri,
-		tableSearchInput:  ti,
-		fieldEditInput:    fi,
+		config:                cfg,
+		mode:                  modeList,
+		connInput:             ci,
+		nameInput:             ni,
+		inputSpinner:          sp,
+		dbSearchInput:         si,
+		queryInput:            qi,
+		queryFocused:          true,
+		resultSearchInput:     ri,
+		tableSearchInput:      ti,
+		fieldEditInput:        fi,
+		columnInfoSearchInput: cfi,
+		viewport:              vp,
 	}
 }

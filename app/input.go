@@ -89,7 +89,7 @@ func (a *App) viewInput() string {
 	var content string
 
 	if a.inputStep == 0 {
-		content = "Connection string:\n\n" + a.connInput.View()
+		content = inputLabelStyle.Render("Connection string:") + "\n\n" + a.connInput.View()
 
 		if a.inputTesting {
 			content += "\n\n" + a.inputSpinner.View() + " Testing connection..."
@@ -99,7 +99,7 @@ func (a *App) viewInput() string {
 			content += "\n\n" + errorStyle.Render("Error: "+a.inputErr.Error())
 		}
 	} else {
-		content = "Name for this connection:\n\n" + a.nameInput.View()
+		content = inputLabelStyle.Render("Name for this connection:") + "\n\n" + a.nameInput.View()
 	}
 
 	controls := "enter: submit • esc: cancel"

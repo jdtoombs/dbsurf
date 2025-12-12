@@ -8,6 +8,11 @@ var Version = "dev"
 // UI constants
 const (
 	DefaultVisibleRows = 10
+	// Layout dimensions for viewport calculation
+	LogoHeight       = 10 // Logo art lines + version + newline after
+	ControlsHeight   = 2  // Controls line + spacing
+	BoxPadding       = 4  // Border (2) + padding (2) vertical
+	BoxHeaderPadding = 5  // Header lines inside box (title + search + label)
 )
 
 // Color palette

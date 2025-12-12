@@ -15,10 +15,41 @@ func (a *App) filterTables() {
 
 func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if a.showingColumnInfo {
+		if a.columnInfoSearching {
+			switch msg.String() {
+			case "esc":
+				a.columnInfoSearching = false
+				a.columnInfoSearchInput.Blur()
+				return a, nil
+			case "enter":
+				a.columnInfoFilter = a.columnInfoSearchInput.Value()
+				a.filterAndRebuildColumnInfo()
+				a.columnInfoSearching = false
+				a.columnInfoSearchInput.Blur()
+				return a, nil
+			}
+			var cmd tea.Cmd
+			a.columnInfoSearchInput, cmd = a.columnInfoSearchInput.Update(msg)
+			return a, cmd
+		}
+
 		switch msg.String() {
-		case "esc", "?", "q":
+		case "esc":
+			if a.columnInfoFilter != "" {
+				a.columnInfoFilter = ""
+				a.columnInfoSearchInput.SetValue("")
+				a.filterAndRebuildColumnInfo()
+				return a, nil
+			}
 			a.showingColumnInfo = false
 			return a, nil
+		case "?", "q":
+			a.showingColumnInfo = false
+			return a, nil
+		case "/":
+			a.columnInfoSearching = true
+			a.columnInfoSearchInput.Focus()
+			return a, textinput.Blink
 		}
 		var cmd tea.Cmd
 		a.columnInfoTable, cmd = a.columnInfoTable.Update(msg)
@@ -65,6 +96,10 @@ func (a *App) updateTableList(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			info, err := db.GetColumnInfo(a.db, a.selectedDatabase, cleanName, a.dbType)
 			if err == nil && len(info) > 0 {
 				a.queryTableName = cleanName
+				a.columnInfoData = info
+				a.columnInfoFilter = ""
+				a.columnInfoSearchInput.SetValue("")
+				a.filteredColumnInfo = info
 				tableHeight := min(len(info), 15)
 				a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
 				a.showingColumnInfo = true
@@ -105,44 +140,49 @@ func (a *App) viewTableList() string {
 
 	if a.showingColumnInfo {
 		content = selectedStyle.Render("Column Info: "+a.queryTableName) + "\n\n"
-		content += a.columnInfoTable.View()
-		return a.renderFrame(content, "j/k: navigate • esc/?: close")
+
+		if a.columnInfoSearching {
+			content += inputLabelStyle.Render("Filter: ") + a.columnInfoSearchInput.View() + "\n\n"
+		} else if a.columnInfoFilter != "" {
+			content += dimStyle.Render("Filter: "+a.columnInfoFilter+" (esc to clear)") + "\n\n"
+		} else {
+			content += dimStyle.Render("Filter: press / to filter") + "\n\n"
+		}
+
+		if len(a.filteredColumnInfo) > 0 {
+			content += a.columnInfoTable.View()
+		} else {
+			content += dimStyle.Render("No columns match filter")
+		}
+
+		return a.renderFrame(content, "j/k: navigate • /: filter • esc/?: close")
 	}
 
 	content = "Database: " + selectedStyle.Render(a.selectedDatabase) + "\n\n"
 
 	if a.tableSearching {
-		content += "Search: " + a.tableSearchInput.View() + "\n\n"
+		content += inputLabelStyle.Render("Search: ") + a.tableSearchInput.View() + "\n\n"
 	} else if a.tableSearchInput.Value() != "" {
 		content += dimStyle.Render("Search: "+a.tableSearchInput.Value()) + "\n\n"
+	} else {
+		content += dimStyle.Render("Search: press / to filter") + "\n\n"
 	}
 
 	content += "Tables:\n"
 	if len(a.filteredTables) > 0 {
-		visibleCount := DefaultVisibleRows
-
-		scrollOffset := 0
-		if a.tableCursor >= visibleCount {
-			scrollOffset = a.tableCursor - visibleCount + 1
-		}
-
-		start := scrollOffset
-		end := scrollOffset + visibleCount
-		if end > len(a.filteredTables) {
-			end = len(a.filteredTables)
-		}
-
 		var lines []string
-		for i := start; i < end; i++ {
-			cursor := "  "
-			line := a.filteredTables[i]
+		for i, tbl := range a.filteredTables {
+			prefix := "  "
+			line := tbl
 			if i == a.tableCursor {
-				cursor = "> "
+				prefix = "> "
 				line = selectedStyle.Render(line)
 			}
-			lines = append(lines, cursor+line)
+			lines = append(lines, prefix+line)
 		}
-		content += strings.Join(lines, "\n")
+		a.viewport.SetContent(strings.Join(lines, "\n"))
+		a.syncViewportToCursor(a.tableCursor, len(a.filteredTables))
+		content += a.viewport.View()
 	} else {
 		content += dimStyle.Render("No tables found")
 	}

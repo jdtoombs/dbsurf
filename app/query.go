@@ -33,10 +33,41 @@ func hasJoin(query string) bool {
 
 func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	if a.showingColumnInfo {
+		if a.columnInfoSearching {
+			switch msg.String() {
+			case "esc":
+				a.columnInfoSearching = false
+				a.columnInfoSearchInput.Blur()
+				return a, nil
+			case "enter":
+				a.columnInfoFilter = a.columnInfoSearchInput.Value()
+				a.filterAndRebuildColumnInfo()
+				a.columnInfoSearching = false
+				a.columnInfoSearchInput.Blur()
+				return a, nil
+			}
+			var cmd tea.Cmd
+			a.columnInfoSearchInput, cmd = a.columnInfoSearchInput.Update(msg)
+			return a, cmd
+		}
+
 		switch msg.String() {
-		case "esc", "?", "q":
+		case "esc":
+			if a.columnInfoFilter != "" {
+				a.columnInfoFilter = ""
+				a.columnInfoSearchInput.SetValue("")
+				a.filterAndRebuildColumnInfo()
+				return a, nil
+			}
 			a.showingColumnInfo = false
 			return a, nil
+		case "?", "q":
+			a.showingColumnInfo = false
+			return a, nil
+		case "/":
+			a.columnInfoSearching = true
+			a.columnInfoSearchInput.Focus()
+			return a, textinput.Blink
 		}
 		var cmd tea.Cmd
 		a.columnInfoTable, cmd = a.columnInfoTable.Update(msg)
@@ -178,6 +209,10 @@ func (a *App) updateResultNavigation(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if a.queryTableName != "" {
 			info, err := db.GetColumnInfo(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
 			if err == nil && len(info) > 0 {
+				a.columnInfoData = info
+				a.columnInfoFilter = ""
+				a.columnInfoSearchInput.SetValue("")
+				a.filteredColumnInfo = info
 				tableHeight := min(len(info), 15)
 				a.columnInfoTable = buildColumnInfoTable(info, tableHeight)
 				if a.queryResult != nil && a.fieldCursor < len(a.queryResult.Columns) {
@@ -202,8 +237,27 @@ func (a *App) viewQuery() string {
 	if a.showingColumnInfo {
 		b.WriteString(selectedStyle.Render("Column Info: " + a.queryTableName))
 		b.WriteString("\n\n")
-		b.WriteString(a.columnInfoTable.View())
-		return a.renderFrame(b.String(), "j/k: navigate • esc/?: close")
+
+		if a.columnInfoSearching {
+			b.WriteString(inputLabelStyle.Render("Filter: "))
+			b.WriteString(a.columnInfoSearchInput.View())
+			b.WriteString("\n\n")
+		} else if a.columnInfoFilter != "" {
+			b.WriteString(dimStyle.Render("Filter: " + a.columnInfoFilter + " (esc to clear)"))
+			b.WriteString("\n\n")
+		} else {
+			b.WriteString(dimStyle.Render("Filter: press / to filter"))
+			b.WriteString("\n\n")
+		}
+
+		if len(a.filteredColumnInfo) > 0 {
+			b.WriteString(a.columnInfoTable.View())
+		} else {
+			b.WriteString(dimStyle.Render("No columns match filter"))
+		}
+
+		controls := "j/k: navigate • /: filter • esc/?: close"
+		return a.renderFrame(b.String(), controls)
 	}
 
 	if a.editConfirming {
@@ -215,7 +269,7 @@ func (a *App) viewQuery() string {
 	b.WriteString("\n\n")
 
 	if a.queryFocused {
-		b.WriteString("Query: ")
+		b.WriteString(inputLabelStyle.Render("Query: "))
 		b.WriteString(a.queryInput.View())
 		b.WriteString("\n\n")
 	} else {
@@ -223,13 +277,21 @@ func (a *App) viewQuery() string {
 		b.WriteString("\n\n")
 	}
 
-	if a.resultSearching {
-		b.WriteString("Filter: ")
-		b.WriteString(a.resultSearchInput.View())
-		b.WriteString("\n\n")
-	} else if a.resultFilter != "" {
-		b.WriteString(dimStyle.Render("Filter: " + a.resultFilter + " (esc to clear)"))
-		b.WriteString("\n\n")
+	if a.queryResult != nil {
+		if a.resultSearching {
+			b.WriteString(inputLabelStyle.Render("Filter: "))
+			b.WriteString(a.resultSearchInput.View())
+			b.WriteString("\n\n")
+		} else if a.resultFilter != "" {
+			b.WriteString(dimStyle.Render("Filter: " + a.resultFilter + " (esc to clear)"))
+			b.WriteString("\n\n")
+		} else if !a.queryFocused {
+			b.WriteString(dimStyle.Render("Filter: press / to filter"))
+			b.WriteString("\n\n")
+		} else {
+			b.WriteString(dimStyle.Render("Filter: focus results to filter"))
+			b.WriteString("\n\n")
+		}
 	}
 
 	if a.queryErr != nil {
@@ -243,6 +305,8 @@ func (a *App) viewQuery() string {
 		}
 		b.WriteString(bracketStyle.Render("{"))
 		b.WriteString("\n")
+
+		var fieldLines []string
 		for j, col := range a.queryResult.Columns {
 			val := ""
 			if j < len(row) {
@@ -252,25 +316,31 @@ func (a *App) viewQuery() string {
 			if j == len(a.queryResult.Columns)-1 {
 				comma = ""
 			}
-			b.WriteString("  ")
 
+			var line strings.Builder
+			line.WriteString("  ")
 			isSelected := !a.queryFocused && j == a.fieldCursor
 			if isSelected {
-				b.WriteString(editingStyle.Render(fmt.Sprintf(`"%s"`, col)))
-				b.WriteString(": ")
+				line.WriteString(editingStyle.Render(fmt.Sprintf(`"%s"`, col)))
+				line.WriteString(": ")
 				if a.fieldEditing {
-					b.WriteString(a.fieldEditInput.View())
+					line.WriteString(a.fieldEditInput.View())
 				} else {
-					b.WriteString(editingStyle.Render(fmt.Sprintf(`"%s"`, val)))
+					line.WriteString(editingStyle.Render(fmt.Sprintf(`"%s"`, val)))
 				}
 			} else {
-				b.WriteString(selectedStyle.Render(fmt.Sprintf(`"%s"`, col)))
-				b.WriteString(": ")
-				b.WriteString(valueStyle.Render(fmt.Sprintf(`"%s"`, val)))
+				line.WriteString(selectedStyle.Render(fmt.Sprintf(`"%s"`, col)))
+				line.WriteString(": ")
+				line.WriteString(valueStyle.Render(fmt.Sprintf(`"%s"`, val)))
 			}
-			b.WriteString(comma)
-			b.WriteString("\n")
+			line.WriteString(comma)
+			fieldLines = append(fieldLines, line.String())
 		}
+
+		a.viewport.SetContent(strings.Join(fieldLines, "\n"))
+		a.syncViewportToCursor(a.fieldCursor, len(a.queryResult.Columns))
+		b.WriteString(strings.TrimRight(a.viewport.View(), "\n "))
+		b.WriteString("\n")
 		b.WriteString(bracketStyle.Render("}"))
 		b.WriteString("\n")
 

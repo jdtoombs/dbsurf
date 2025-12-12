@@ -81,37 +81,28 @@ func (a *App) viewConnected() string {
 		content = "Connected to " + conn.Name + "\n\n"
 
 		if a.dbSearching {
-			content += "Search: " + a.dbSearchInput.View() + "\n\n"
+			content += inputLabelStyle.Render("Search: ") + a.dbSearchInput.View() + "\n\n"
 		} else if a.dbSearchInput.Value() != "" {
 			content += dimStyle.Render("Search: "+a.dbSearchInput.Value()) + "\n\n"
+		} else {
+			content += dimStyle.Render("Search: press / to filter") + "\n\n"
 		}
 
 		content += "Databases:\n"
 		if len(a.filteredDatabases) > 0 {
-			visibleCount := DefaultVisibleRows
-
-			scrollOffset := 0
-			if a.dbCursor >= visibleCount {
-				scrollOffset = a.dbCursor - visibleCount + 1
-			}
-
-			start := scrollOffset
-			end := scrollOffset + visibleCount
-			if end > len(a.filteredDatabases) {
-				end = len(a.filteredDatabases)
-			}
-
 			var lines []string
-			for i := start; i < end; i++ {
-				cursor := "  "
-				line := a.filteredDatabases[i]
+			for i, db := range a.filteredDatabases {
+				prefix := "  "
+				line := db
 				if i == a.dbCursor {
-					cursor = "> "
+					prefix = "> "
 					line = selectedStyle.Render(line)
 				}
-				lines = append(lines, cursor+line)
+				lines = append(lines, prefix+line)
 			}
-			content += strings.Join(lines, "\n")
+			a.viewport.SetContent(strings.Join(lines, "\n"))
+			a.syncViewportToCursor(a.dbCursor, len(a.filteredDatabases))
+			content += a.viewport.View()
 		} else {
 			content += dimStyle.Render("No databases found")
 		}

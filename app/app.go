@@ -1,8 +1,6 @@
 package app
 
 import (
-	"strings"
-
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -17,6 +15,7 @@ func (a *App) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		a.width = msg.Width
 		a.height = msg.Height
+		a.updateViewportSize()
 		return a, nil
 	case clearCopyMsg:
 		a.copySuccess = false
@@ -89,17 +88,48 @@ func (a *App) renderFrame(content, controls string) string {
 	boxedContent := box.Render(content)
 
 	logoRendered = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, logoRendered)
-	boxedContent = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, boxedContent)
 	controlsRendered := lipgloss.PlaceHorizontal(a.width, lipgloss.Center, dimStyle.Render(controls))
+	boxedContent = lipgloss.PlaceHorizontal(a.width, lipgloss.Center, boxedContent)
 
-	contentHeight := strings.Count(logoRendered, "\n") + strings.Count(boxedContent, "\n") + 3
-	bottomPadding := a.height - contentHeight - 2
-	if bottomPadding < 0 {
-		bottomPadding = 0
+	// Build frame with logo and box
+	frame := logoRendered + "\n" + boxedContent
+
+	// Place frame at top and controls at bottom of terminal
+	frameHeight := a.height - 1 // Leave room for controls
+	frame = lipgloss.Place(a.width, frameHeight, lipgloss.Center, lipgloss.Top, frame)
+
+	return frame + "\n" + controlsRendered
+}
+
+// updateViewportSize recalculates viewport dimensions based on terminal size
+func (a *App) updateViewportSize() {
+	boxWidth := a.width - 4
+	if boxWidth > 80 {
+		boxWidth = 80
+	}
+	if boxWidth < 40 {
+		boxWidth = 40
 	}
 
-	return logoRendered + "\n" +
-		boxedContent + "\n" +
-		strings.Repeat("\n", bottomPadding) +
-		controlsRendered
+	// Calculate available height for viewport content
+	// Terminal height - logo - controls - box padding - header content inside box
+	contentHeight := a.height - LogoHeight - ControlsHeight - BoxPadding - BoxHeaderPadding
+	if contentHeight < 5 {
+		contentHeight = 5
+	}
+
+	a.viewport.Width = boxWidth - 4 // account for box border/padding
+	a.viewport.Height = contentHeight
+}
+
+// syncViewportToCursor adjusts viewport scroll position to keep cursor visible
+func (a *App) syncViewportToCursor(cursor, totalItems int) {
+	if totalItems == 0 {
+		return
+	}
+	if cursor < a.viewport.YOffset {
+		a.viewport.SetYOffset(cursor)
+	} else if cursor >= a.viewport.YOffset+a.viewport.Height {
+		a.viewport.SetYOffset(cursor - a.viewport.Height + 1)
+	}
 }

@@ -13,7 +13,6 @@ func filterStrings(items []string, query string) []string {
 		return items
 	}
 	q := strings.ToLower(query)
-	// Pre-allocate to avoid reallocations during append
 	filtered := make([]string, 0, len(items))
 	for _, item := range items {
 		if strings.Contains(strings.ToLower(item), q) {
@@ -21,6 +20,28 @@ func filterStrings(items []string, query string) []string {
 		}
 	}
 	return filtered
+}
+
+func filterColumnInfo(items []db.ColumnInfo, query string) []db.ColumnInfo {
+	if query == "" {
+		return items
+	}
+	q := strings.ToLower(query)
+	filtered := make([]db.ColumnInfo, 0, len(items))
+	for _, item := range items {
+		if strings.Contains(strings.ToLower(item.Name), q) {
+			filtered = append(filtered, item)
+		}
+	}
+	return filtered
+}
+
+func (a *App) filterAndRebuildColumnInfo() {
+	a.filteredColumnInfo = filterColumnInfo(a.columnInfoData, a.columnInfoFilter)
+	if len(a.filteredColumnInfo) > 0 {
+		tableHeight := min(len(a.filteredColumnInfo), 15)
+		a.columnInfoTable = buildColumnInfoTable(a.filteredColumnInfo, tableHeight)
+	}
 }
 
 func moveCursor(cursor, delta, max int) int {

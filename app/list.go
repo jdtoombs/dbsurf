@@ -71,15 +71,17 @@ func (a *App) viewList() string {
 	} else {
 		var lines []string
 		for i, conn := range a.config.Connections {
-			cursor := "  "
+			prefix := "  "
 			line := fmt.Sprintf("%s (%s)", conn.Name, conn.DBType)
 			if i == a.cursor {
-				cursor = "> "
+				prefix = "> "
 				line = selectedStyle.Render(line)
 			}
-			lines = append(lines, cursor+line)
+			lines = append(lines, prefix+line)
 		}
-		content = strings.Join(lines, "\n")
+		a.viewport.SetContent(strings.Join(lines, "\n"))
+		a.syncViewportToCursor(a.cursor, len(a.config.Connections))
+		content = a.viewport.View()
 	}
 
 	controls := "j/k: navigate • n: new • d: delete • q: quit"
