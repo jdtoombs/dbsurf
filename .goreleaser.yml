@@ -39,6 +39,18 @@ snapshot:
 
 changelog:
   sort: asc
+  groups:
+    - title: "✨ Features"
+      regexp: '^feat:'
+      order: 0
+    - title: "🐛 Bug Fixes"
+      regexp: '^bug:'
+      order: 1
+    - title: "💄 UX Improvements"
+      regexp: '^ux:'
+      order: 2
+    - title: "Other"
+      order: 999
   filters:
     exclude:
       - '^docs:'
