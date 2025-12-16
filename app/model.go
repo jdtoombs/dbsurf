@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"dbsurf/config"
 	"dbsurf/db"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -113,8 +114,9 @@ type App struct {
 	fieldOriginalValue string
 	editConfirming     bool
 	pendingUpdateSQL   string
-	queryTableName     string
-	queryPKColumns     []string
+	queryTableName        string
+	queryPKColumns        []string
+	advancedQueryTempFile string
 	// Column info mode
 	showingColumnInfo       bool
 	columnInfoTable         table.Model
@@ -150,8 +152,13 @@ func New() *App {
 	si.Placeholder = "Search..."
 	si.Width = 30
 
+	editorName := "vim"
+	if strings.Contains(os.Getenv("EDITOR"), "nvim") {
+		editorName = "nvim"
+	}
+
 	qi := textinput.New()
-	qi.Placeholder = "SELECT * FROM ..."
+	qi.Placeholder = "enter query here or ctrl+e for " + editorName
 	qi.Width = 60
 
 	ri := textinput.New()

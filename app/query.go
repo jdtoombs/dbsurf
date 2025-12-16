@@ -137,6 +137,8 @@ func (a *App) updateQueryInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "ctrl+c":
 		a.queryInput.SetValue("")
 		return a, nil
+	case "ctrl+e":
+		return a, a.openAdvancedQueryEditor()
 	case "enter":
 		query := a.queryInput.Value()
 		if query != "" {
@@ -367,7 +369,7 @@ func (a *App) viewQuery() string {
 	} else if !a.queryFocused && a.queryResult != nil && len(a.filteredResultRows) > 0 {
 		controls = "h/l: rows • j/k: fields • i: edit • ?: cols • ctrl+c: copy • /: filter • tab: query • esc: back"
 	} else {
-		controls = "enter: execute • tab: focus • /: filter • ctrl+c: clear • ctrl+t: tables • j/k: nav • esc: back"
+		controls = "enter: run • ctrl+e: editor • tab: results • ctrl+c: clear • ctrl+t: tables • esc: back"
 	}
 
 	return a.renderFrame(b.String(), controls)
