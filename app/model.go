@@ -63,6 +63,9 @@ var (
 	inputLabelStyle = lipgloss.NewStyle().
 			Foreground(ColorWarning).
 			Bold(true)
+
+	focusedInputStyle = lipgloss.NewStyle().
+				Background(lipgloss.Color("236"))
 )
 
 type mode int
@@ -76,18 +79,29 @@ const (
 )
 
 type App struct {
-	config            *config.Config
-	cursor            int
-	mode              mode
-	connInput         textinput.Model
-	nameInput         textinput.Model
-	inputStep         int
-	inputErr          error
-	inputTesting      bool
-	inputSpinner      spinner.Model
-	err               error
-	width             int
-	height            int
+	// ─────────────────────────────────────────────────────────────────────────
+	// Core
+	// ─────────────────────────────────────────────────────────────────────────
+	config *config.Config
+	mode   mode
+	err    error
+	width  int
+	height int
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Connection List
+	// ─────────────────────────────────────────────────────────────────────────
+	cursor       int
+	connInput    textinput.Model
+	nameInput    textinput.Model
+	inputStep    int
+	inputErr     error
+	inputTesting bool
+	inputSpinner spinner.Model
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Database Connection
+	// ─────────────────────────────────────────────────────────────────────────
 	db                *sql.DB
 	dbErr             error
 	dbType            string
@@ -96,44 +110,73 @@ type App struct {
 	dbCursor          int
 	dbSearching       bool
 	dbSearchInput     textinput.Model
-	// Query mode
-	selectedDatabase   string
-	queryInput         textinput.Model
-	queryResult        *db.QueryResult
-	queryErr           error
-	queryFocused       bool
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Query Mode
+	// ─────────────────────────────────────────────────────────────────────────
+	selectedDatabase      string
+	queryInput            textinput.Model
+	queryResult           *db.QueryResult
+	queryErr              error
+	queryFocused          bool
+	queryTableName        string
+	queryPKColumns        []string
+	advancedQueryTempFile string
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Result Navigation
+	// ─────────────────────────────────────────────────────────────────────────
 	resultCursor       int
 	resultSearching    bool
 	resultSearchInput  textinput.Model
 	resultFilter       string
 	filteredResultRows [][]string
-	// Field editing
 	fieldCursor        int
+	copySuccess        bool
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Field Editing (UPDATE)
+	// ─────────────────────────────────────────────────────────────────────────
 	fieldEditing       bool
 	fieldEditInput     textinput.Model
 	fieldOriginalValue string
 	editConfirming     bool
 	pendingUpdateSQL   string
-	queryTableName        string
-	queryPKColumns        []string
-	advancedQueryTempFile string
-	// Column info mode
-	showingColumnInfo       bool
-	columnInfoTable         table.Model
-	columnInfoData          []db.ColumnInfo
-	filteredColumnInfo      []db.ColumnInfo
-	columnInfoSearching     bool
-	columnInfoSearchInput   textinput.Model
-	columnInfoFilter        string
-	// Table list mode
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Record Deletion
+	// ─────────────────────────────────────────────────────────────────────────
+	deleteConfirming   bool
+	pendingDeleteSQL   string
+	deletingMultiple   bool
+	deleteRowCount     int
+	fkDependencies     []db.FKDependency
+	fkDependencyCounts map[string]int
+	fkDepCursor        int
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Column Info View
+	// ─────────────────────────────────────────────────────────────────────────
+	showingColumnInfo     bool
+	columnInfoTable       table.Model
+	columnInfoData        []db.ColumnInfo
+	filteredColumnInfo    []db.ColumnInfo
+	columnInfoSearching   bool
+	columnInfoSearchInput textinput.Model
+	columnInfoFilter      string
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// Table List Mode
+	// ─────────────────────────────────────────────────────────────────────────
 	tables           []string
 	filteredTables   []string
 	tableCursor      int
 	tableSearching   bool
 	tableSearchInput textinput.Model
-	// Copy mode
-	copySuccess bool
-	// Viewport for scrollable content
+
+	// ─────────────────────────────────────────────────────────────────────────
+	// UI Components
+	// ─────────────────────────────────────────────────────────────────────────
 	viewport viewport.Model
 }
 

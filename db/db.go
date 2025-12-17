@@ -136,12 +136,18 @@ func GetPrimaryKey(db *sql.DB, dbName, tableName, dbType string) ([]string, erro
 			ORDER BY array_position(i.indkey, a.attnum)`, tableName)
 	case "sqlserver":
 		cleanTable := CleanTableName(tableName, dbType)
+		schema := ExtractSchema(tableName, dbType)
 		query = fmt.Sprintf(`
-			SELECT COLUMN_NAME
-			FROM [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE
-			WHERE OBJECTPROPERTY(OBJECT_ID(CONSTRAINT_SCHEMA + '.' + CONSTRAINT_NAME), 'IsPrimaryKey') = 1
-			AND TABLE_NAME = '%s'
-			ORDER BY ORDINAL_POSITION`, dbName, cleanTable)
+			SELECT kcu.COLUMN_NAME
+			FROM [%s].INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
+			JOIN [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
+				ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
+				AND tc.TABLE_SCHEMA = kcu.TABLE_SCHEMA
+				AND tc.TABLE_NAME = kcu.TABLE_NAME
+			WHERE tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+			AND tc.TABLE_SCHEMA = '%s'
+			AND tc.TABLE_NAME = '%s'
+			ORDER BY kcu.ORDINAL_POSITION`, dbName, dbName, schema, cleanTable)
 	}
 
 	rows, err := db.Query(query)
@@ -209,6 +215,7 @@ func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, 
 			ORDER BY c.ordinal_position`, tableName, tableName)
 	case "sqlserver":
 		cleanTable := CleanTableName(tableName, dbType)
+		schema := ExtractSchema(tableName, dbType)
 		query = fmt.Sprintf(`
 			SELECT
 				c.COLUMN_NAME,
@@ -223,10 +230,10 @@ func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, 
 				FROM [%s].INFORMATION_SCHEMA.TABLE_CONSTRAINTS tc
 				JOIN [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE kcu
 					ON tc.CONSTRAINT_NAME = kcu.CONSTRAINT_NAME
-				WHERE tc.TABLE_NAME = '%s' AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
+				WHERE tc.TABLE_SCHEMA = '%s' AND tc.TABLE_NAME = '%s' AND tc.CONSTRAINT_TYPE = 'PRIMARY KEY'
 			) pk ON c.COLUMN_NAME = pk.COLUMN_NAME
-			WHERE c.TABLE_NAME = '%s'
-			ORDER BY c.ORDINAL_POSITION`, dbName, dbName, dbName, cleanTable, cleanTable)
+			WHERE c.TABLE_SCHEMA = '%s' AND c.TABLE_NAME = '%s'
+			ORDER BY c.ORDINAL_POSITION`, dbName, dbName, dbName, schema, cleanTable, schema, cleanTable)
 	}
 
 	rows, err := db.Query(query)
@@ -246,6 +253,71 @@ func GetColumnInfo(db *sql.DB, dbName, tableName, dbType string) ([]ColumnInfo, 
 		columns = append(columns, col)
 	}
 	return columns, nil
+}
+
+// FKDependency represents a foreign key that references a table
+type FKDependency struct {
+	TableName        string // Table containing the FK
+	ColumnName       string // Column in that table
+	ConstraintName   string // Name of the FK constraint
+	ReferencedColumn string // Column in the referenced (target) table
+}
+
+// GetReferencingFKs returns all foreign keys that reference the given table
+func GetReferencingFKs(db *sql.DB, dbName, tableName, dbType string) ([]FKDependency, error) {
+	var query string
+	switch dbType {
+	case "mysql":
+		query = fmt.Sprintf(`
+			SELECT TABLE_NAME, COLUMN_NAME, CONSTRAINT_NAME, REFERENCED_COLUMN_NAME
+			FROM INFORMATION_SCHEMA.KEY_COLUMN_USAGE
+			WHERE REFERENCED_TABLE_SCHEMA = '%s' AND REFERENCED_TABLE_NAME = '%s'`, dbName, tableName)
+	case "postgres":
+		query = fmt.Sprintf(`
+			SELECT
+				kcu.table_name,
+				kcu.column_name,
+				tc.constraint_name,
+				ccu.column_name AS referenced_column
+			FROM information_schema.table_constraints tc
+			JOIN information_schema.key_column_usage kcu
+				ON tc.constraint_name = kcu.constraint_name
+				AND tc.table_schema = kcu.table_schema
+			JOIN information_schema.constraint_column_usage ccu
+				ON ccu.constraint_name = tc.constraint_name
+				AND ccu.table_schema = tc.table_schema
+			WHERE tc.constraint_type = 'FOREIGN KEY'
+				AND ccu.table_name = '%s'`, tableName)
+	case "sqlserver":
+		cleanTable := CleanTableName(tableName, dbType)
+		schema := ExtractSchema(tableName, dbType)
+		query = fmt.Sprintf(`
+			SELECT
+				fk.TABLE_NAME,
+				fk.COLUMN_NAME,
+				fk.CONSTRAINT_NAME,
+				pk.COLUMN_NAME AS REFERENCED_COLUMN_NAME
+			FROM [%s].INFORMATION_SCHEMA.REFERENTIAL_CONSTRAINTS rc
+			JOIN [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE fk
+				ON fk.CONSTRAINT_NAME = rc.CONSTRAINT_NAME
+			JOIN [%s].INFORMATION_SCHEMA.KEY_COLUMN_USAGE pk
+				ON pk.CONSTRAINT_NAME = rc.UNIQUE_CONSTRAINT_NAME
+			WHERE pk.TABLE_SCHEMA = '%s' AND pk.TABLE_NAME = '%s'`, dbName, dbName, dbName, schema, cleanTable)
+	}
+
+	rows, err := db.Query(query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var deps []FKDependency
+	for rows.Next() {
+		var dep FKDependency
+		rows.Scan(&dep.TableName, &dep.ColumnName, &dep.ConstraintName, &dep.ReferencedColumn)
+		deps = append(deps, dep)
+	}
+	return deps, nil
 }
 
 func RunQuery(db *sql.DB, query string) (*QueryResult, error) {

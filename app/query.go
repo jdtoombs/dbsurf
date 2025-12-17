@@ -21,7 +21,12 @@ func parseTableName(query string) string {
 	re := regexp.MustCompile(`(?i)\bFROM\s+(["\[\]?\w]+\.)?(["\[\]?\w]+)`)
 	matches := re.FindStringSubmatch(query)
 	if len(matches) >= 3 {
-		return strings.Trim(matches[2], "\"[]`")
+		schema := strings.Trim(matches[1], "\"[]`. ")
+		table := strings.Trim(matches[2], "\"[]`")
+		if schema != "" {
+			return schema + "." + table
+		}
+		return table
 	}
 	return ""
 }
@@ -78,6 +83,10 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return a.updateEditConfirm(msg)
 	}
 
+	if a.deleteConfirming {
+		return a.updateDeleteConfirm(msg)
+	}
+
 	if a.fieldEditing {
 		return a.updateFieldEdit(msg)
 	}
@@ -87,6 +96,11 @@ func (a *App) updateQuery(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	switch msg.String() {
+	case "ctrl+d":
+		if err := a.startRecordDelete(); err != nil {
+			a.queryErr = err
+		}
+		return a, nil
 	case "esc":
 		if a.resultFilter != "" {
 			a.clearResultFilter()
@@ -159,7 +173,12 @@ func (a *App) updateQueryInput(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				a.queryTableName = parseTableName(query)
 				a.queryPKColumns = nil
 				if a.queryTableName != "" && !hasJoin(query) {
-					a.queryPKColumns, _ = db.GetPrimaryKey(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
+					var pkErr error
+					a.queryPKColumns, pkErr = db.GetPrimaryKey(a.db, a.selectedDatabase, a.queryTableName, a.dbType)
+					if pkErr != nil {
+						// Show PK lookup error so user knows why edit/delete won't work
+						a.queryErr = fmt.Errorf("PK lookup failed for %s: %v", a.queryTableName, pkErr)
+					}
 				}
 			}
 		}
@@ -266,16 +285,20 @@ func (a *App) viewQuery() string {
 		return a.viewEditConfirm()
 	}
 
+	if a.deleteConfirming {
+		return a.viewDeleteConfirm()
+	}
+
 	b.WriteString("Database: ")
 	b.WriteString(selectedStyle.Render(a.selectedDatabase))
 	b.WriteString("\n\n")
 
 	if a.queryFocused {
-		b.WriteString(inputLabelStyle.Render("Query: "))
-		b.WriteString(a.queryInput.View())
+		b.WriteString(inputLabelStyle.Render("> Query: "))
+		b.WriteString(focusedInputStyle.Render(a.queryInput.View()))
 		b.WriteString("\n\n")
 	} else {
-		b.WriteString(dimStyle.Render("Query: " + a.queryInput.Value()))
+		b.WriteString(dimStyle.Render("  Query: " + a.queryInput.Value()))
 		b.WriteString("\n\n")
 	}
 
@@ -367,9 +390,9 @@ func (a *App) viewQuery() string {
 	if a.fieldEditing {
 		controls = "enter: save • esc: cancel"
 	} else if !a.queryFocused && a.queryResult != nil && len(a.filteredResultRows) > 0 {
-		controls = "h/l: rows • j/k: fields • i: edit • ?: cols • ctrl+c: copy • /: filter • tab: query • esc: back"
+		controls = "h/l: rows • j/k: fields • i: edit • ctrl+d: delete • ?: cols • ctrl+c: copy • /: filter • tab: query • esc: back"
 	} else {
-		controls = "enter: run • ctrl+e: editor • tab: results • ctrl+c: clear • ctrl+t: tables • esc: back"
+		controls = "enter: run • ctrl+e: editor • tab: results • ctrl+c: clear • ctrl+d: delete • ctrl+t: tables • esc: back"
 	}
 
 	return a.renderFrame(b.String(), controls)
