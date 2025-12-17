@@ -1,3 +1,5 @@
+// connected.go handles the database selection view after connecting to a server.
+// It displays available databases and allows filtering and selection.
 package app
 
 import (

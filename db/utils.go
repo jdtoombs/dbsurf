@@ -1,3 +1,5 @@
+// utils.go provides SQL Server-specific utilities for handling schema-qualified
+// table names and query formatting.
 package db
 
 import (

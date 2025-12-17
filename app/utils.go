@@ -1,3 +1,5 @@
+// utils.go provides helper functions for filtering lists, cursor movement,
+// and building UI components like the column info table.
 package app
 
 import (

@@ -1,3 +1,5 @@
+// app.go implements the main Bubble Tea Update/View loop and routing logic.
+// It delegates to mode-specific handlers based on the current application state.
 package app
 
 import (

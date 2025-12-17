@@ -1,3 +1,5 @@
+// input.go handles the connection input mode where users enter new database
+// connection strings. It validates connections asynchronously before saving.
 package app
 
 import (

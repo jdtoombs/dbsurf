@@ -1,11 +1,11 @@
+// constants.go defines version info, layout dimensions, and color palette
+// used throughout the application.
 package app
 
 import "github.com/charmbracelet/lipgloss"
 
 // Version is set at build time via ldflags
 var Version = "dev"
-
-// UI constants
 const (
 	DefaultVisibleRows = 10
 	// Layout dimensions for viewport calculation

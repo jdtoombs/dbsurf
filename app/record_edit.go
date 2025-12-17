@@ -1,3 +1,6 @@
+// record_edit.go handles inline field editing and record deletion functionality.
+// It generates UPDATE and DELETE SQL statements, manages FK dependency detection,
+// and provides confirmation dialogs before executing changes.
 package app
 
 import (

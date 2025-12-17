@@ -1,3 +1,5 @@
+// config.go handles loading and saving database connection configurations
+// to ~/.config/dbsurf/config.json.
 package config
 
 import (

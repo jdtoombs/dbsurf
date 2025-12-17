@@ -1,3 +1,5 @@
+// list.go handles the main connection list view where users can select,
+// create, and delete saved database connections.
 package app
 
 import (

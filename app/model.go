@@ -1,3 +1,6 @@
+// model.go defines the core App struct, UI styles, and initialization logic.
+// The App struct holds all application state including database connections,
+// UI components, and mode-specific data.
 package app
 
 import (

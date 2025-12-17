@@ -1,3 +1,6 @@
+// db.go provides database connectivity and query execution for PostgreSQL, MySQL,
+// and SQL Server. It handles connection management, schema introspection, and
+// foreign key dependency detection.
 package db
 
 import (

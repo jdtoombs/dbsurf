@@ -1,3 +1,6 @@
+// query.go handles the query mode for executing SQL queries and navigating results.
+// It supports running queries, viewing results in JSON format, inline editing,
+// copying rows to clipboard, and navigating to column info.
 package app
 
 import (

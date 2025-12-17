@@ -1,3 +1,5 @@
+// tables.go handles the table list mode for browsing database tables.
+// It supports filtering tables and viewing column info for selected tables.
 package app
 
 import (

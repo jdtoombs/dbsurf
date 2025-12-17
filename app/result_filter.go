@@ -1,3 +1,5 @@
+// result_filter.go handles real-time filtering of query results.
+// It filters rows by matching search text against any column value.
 package app
 
 import (

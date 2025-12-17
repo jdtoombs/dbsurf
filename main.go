@@ -1,3 +1,5 @@
+// main.go is the entry point for dbsurf, a terminal-based database browser.
+// It initializes the Bubble Tea program with alternate screen mode.
 package main
 
 import (

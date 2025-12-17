@@ -1,3 +1,6 @@
+// validate.go provides connection string validation for different database types.
+// It validates URL format, required fields, and port ranges before attempting
+// to connect.
 package db
 
 import (
